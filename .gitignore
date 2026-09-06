@@ -85,11 +85,6 @@ $RECYCLE.BIN/
 *.tmp
 *.bak
 *.orig
-.github/workflows
-.gitattributes
-.gitignore
-AGENTS.md
-CLAUDE.md
 
 # Build artifacts (macOS app bundle in launchers/)
 launchers/Incipit.app/
@@ -97,3 +92,6 @@ launchers/Incipit.app/
 # Config IA locale (pas pour le repo)
 AGENTS.md
 CLAUDE.md
+
+# Docs internes
+docs/free-tier-design.md
