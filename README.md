@@ -32,6 +32,8 @@ Drop your whiteboard photos, slide PDFs, notes. Incipit transcribes, structures,
 
 Download your platform's executable (see **Distribution** below) and double-click. Nothing to install: Python, `uv`, and dependencies are bundled. No terminal window opens.
 
+> **Windows**: First run may show "Windows protected your PC" / "Unknown publisher". Click **More info → Run anyway**. This is normal for unsigned open-source apps.
+
 Then copy `config/keys.env.example` to `config/keys.env` next to the executable (or paste your key directly in the app's **Settings** tab — same effect). For PDF: Chrome or Edge — already on almost every machine.
 
 ---
