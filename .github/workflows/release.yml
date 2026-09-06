@@ -41,7 +41,7 @@ jobs:
             --add-data "md2pdf.py;." `
             --add-data "exercices.py;." `
             --add-data "config\keys.env.example;config" `
-            --add-binary "packaging\vendor\windows\uv.exe;."
+            --add-binary "${{ github.workspace }}\packaging\vendor\windows\uv.exe;."
 
       - name: Zip Windows artifact
         run: |
@@ -87,7 +87,7 @@ jobs:
             --add-data "md2pdf.py:." \
             --add-data "exercices.py:." \
             --add-data "config/keys.env.example:config" \
-            --add-binary "packaging/vendor/linux/uv:."
+            --add-binary "${{ github.workspace }}/packaging/vendor/linux/uv:."
 
       - name: Create .desktop file
         run: |
@@ -153,14 +153,14 @@ jobs:
         run: |
           uv run --with pyinstaller --with flask --with pywebview pyinstaller app.py \
             --name Incipit --onedir --windowed --noconfirm \
-            --icon "packaging/vendor/macos/logo.icns" \
+            --icon "${{ github.workspace }}/packaging/vendor/macos/logo.icns" \
             --distpath dist --workpath build/macos --specpath packaging \
             --add-data "frontend:frontend" \
             --add-data "generator.py:." \
             --add-data "md2pdf.py:." \
             --add-data "exercices.py:." \
             --add-data "config/keys.env.example:config" \
-            --add-binary "packaging/vendor/macos/uv:."
+            --add-binary "${{ github.workspace }}/packaging/vendor/macos/uv:."
 
       - name: Zip macOS artifact
         run: |
