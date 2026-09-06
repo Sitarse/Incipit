@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="fr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Incipit - Nouveau cours</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=Geist:wght@500&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container": "#202020",
+                        "surface-container-low": "#1b1b1c",
+                        "primary-fixed": "#eaddff",
+                        "tertiary": "#ffb784",
+                        "primary": "#d2bbff",
+                        "surface-container-highest": "#353535",
+                        "on-tertiary": "#4f2500",
+                        "on-surface-variant": "#ccc3d8",
+                        "on-surface": "#e5e2e1",
+                        "secondary": "#c8c6c6",
+                        "tertiary-fixed-dim": "#ffb784",
+                        "surface": "#131313",
+                        "on-tertiary-fixed-variant": "#713700",
+                        "on-primary-fixed-variant": "#5a00c6",
+                        "inverse-surface": "#e5e2e1",
+                        "primary-fixed-dim": "#d2bbff",
+                        "error": "#ffb4ab",
+                        "on-primary-fixed": "#25005a",
+                        "surface-container-lowest": "#0e0e0e",
+                        "on-background": "#e5e2e1",
+                        "on-secondary-fixed-variant": "#474747",
+                        "secondary-container": "#474747",
+                        "outline-variant": "#4a4455",
+                        "on-tertiary-container": "#ffe0cd",
+                        "outline": "#958da1",
+                        "inverse-primary": "#732ee4",
+                        "tertiary-container": "#a15100",
+                        "surface-bright": "#393939",
+                        "background": "#131313",
+                        "tertiary-fixed": "#ffdcc6",
+                        "secondary-fixed-dim": "#c8c6c6",
+                        "on-primary": "#3f008e",
+                        "error-container": "#93000a",
+                        "on-primary-container": "#ede0ff",
+                        "surface-tint": "#d2bbff",
+                        "surface-variant": "#353535",
+                        "surface-container-high": "#2a2a2a",
+                        "on-tertiary-fixed": "#301400",
+                        "on-secondary-container": "#b6b5b4",
+                        "secondary-fixed": "#e4e2e1",
+                        "on-secondary": "#303030",
+                        "primary-container": "#7c3aed",
+                        "surface-dim": "#131313",
+                        "on-error-container": "#ffdad6",
+                        "on-secondary-fixed": "#1b1c1c",
+                        "on-error": "#690005",
+                        "inverse-on-surface": "#303030"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "unit": "4px",
+                        "md": "16px",
+                        "gutter": "1px",
+                        "sm": "8px",
+                        "xs": "4px",
+                        "inspector-width": "300px",
+                        "sidebar-width": "260px",
+                        "xl": "40px",
+                        "lg": "24px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Inter"],
+                        "display-lg": ["Inter"],
+                        "label-sm": ["Geist"],
+                        "title-sm": ["Inter"],
+                        "code": ["JetBrains Mono"],
+                        "headline-md": ["Inter"],
+                        "body-lg": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-md": ["14px", { "lineHeight": "22px", "fontWeight": "400" }],
+                        "display-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "letterSpacing": "0.02em", "fontWeight": "500" }],
+                        "title-sm": ["18px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "code": ["13px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-lg": ["16px", { "lineHeight": "26px", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        /* Custom scrollbar to match minimalist theme */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4a4455;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #958da1;
+        }
+        
+        /* Material Symbols Fill Configuration */
+        .material-symbols-outlined[data-weight="fill"] {
+            font-variation-settings: 'FILL' 1;
+        }
+        
+        /* Remove default input styles that break dark theme */
+        input[type="text"], input[type="search"], select {
+            background-color: #1e1e1e; /* Using a darker grey than surface-container for inputs, typical of IDEs */
+            border-color: #333333;
+            color: #e5e2e1;
+        }
+        
+        input[type="text"]:focus, input[type="search"]:focus, select:focus {
+            border-color: #7c3aed;
+            box-shadow: none;
+            outline: none;
+        }
+        
+        /* Custom radio button styling */
+        input[type="radio"] {
+            background-color: transparent;
+            border-color: #4a4455;
+            color: #7c3aed;
+        }
+        
+        input[type="radio"]:focus {
+            box-shadow: 0 0 0 1px #7c3aed;
+            border-color: #7c3aed;
+        }
+        
+        /* Obsidian specific generic styles for panels */
+        .obsidian-panel {
+            background-color: #252525;
+            border: 1px solid #333333;
+        }
+
+        /* Le triangle natif de <details> doublerait le chevron des options. */
+        summary::-webkit-details-marker { display: none; }
+
+        /* Bouton principal. Le relief vient d'une lumiere du haut et d'une ombre
+           courte portee, comme un objet pose : pas de halo colore diffus, qui est
+           ce qui donnait au bouton son air de vignette generee. Le violet reste
+           la couleur de marque, il n'est plus la source de lumiere. */
+        .btn-primaire {
+            background: linear-gradient(180deg, #8b5cf6 0%, #7c3aed 45%, #6d28d9 100%);
+            border: 1px solid #5b21b6;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22),
+                        inset 0 -1px 0 rgba(0, 0, 0, .18),
+                        0 1px 2px rgba(0, 0, 0, .45);
+            transition: background .15s ease, box-shadow .15s ease, transform .06s ease;
+        }
+        .btn-primaire:hover:not(:disabled) {
+            background: linear-gradient(180deg, #9d75f9 0%, #8b5cf6 45%, #7c3aed 100%);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, .3),
+                        inset 0 -1px 0 rgba(0, 0, 0, .18),
+                        0 2px 6px rgba(0, 0, 0, .5);
+        }
+        /* L'enfoncement est un vrai deplacement : la lumiere du haut s'eteint et
+           l'ombre passe a l'interieur. C'est ce qui fait "bouton" plutot qu'"effet". */
+        .btn-primaire:active:not(:disabled) {
+            transform: translateY(1px);
+            background: #6423c8;
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, .45);
+        }
+        .btn-primaire:focus-visible {
+            outline: 2px solid #a78bfa;
+            outline-offset: 2px;
+        }
+        /* Desactive : gris franc et non cliquable. Une simple opacite laissait un
+           bouton violet delave qui avait encore l'air actionnable. */
+        .btn-primaire:disabled {
+            background: #282828;
+            border-color: #383838;
+            color: #6b6b6b;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+        .btn-primaire:disabled .touche { opacity: .45; }
+
+        /* Le raccourci dessine comme une touche : arete basse plus marquee. */
+        .touche {
+            background: rgba(255, 255, 255, .12);
+            border: 1px solid rgba(255, 255, 255, .16);
+            border-bottom: 2px solid rgba(0, 0, 0, .3);
+        }
+    </style>
+</head>
+<body class="bg-[#1e1e1e] text-on-surface font-body-md h-screen w-screen overflow-hidden flex selection:bg-primary-container selection:text-white">
+<!-- SideNavBar -->
+<aside class="h-screen w-sidebar-width flex flex-col shrink-0 bg-surface dark:bg-surface border-r border-[#333333] dark:border-[#333333]">
+<div class="flex flex-col h-full py-lg">
+<!-- Branding -->
+<div class="px-md mb-lg flex items-center gap-3">
+<img src="logo.png" alt="Logo" class="w-10 h-10 rounded-lg object-cover" />
+<div>
+<h1 class="font-title-sm text-title-sm font-bold text-on-surface dark:text-on-surface truncate">Incipit</h1>
+<p class="font-label-sm text-label-sm text-on-surface-variant">v1.0.0</p>
+</div>
+</div>
+<!-- Main Navigation Group -->
+<nav aria-label="Main Navigation" class="flex-1 overflow-y-auto overflow-x-hidden">
+<ul class="space-y-[1px]">
+<li>
+<a id="lien-cours" class="flex items-center gap-sm py-sm px-md border-l-2 border-transparent text-on-surface-variant hover:bg-surface-container-highest transition-colors group" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="add_circle">add_circle</span>
+<span class="font-body-md text-body-md truncate">Nouveau cours</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-sm text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container dark:hover:bg-surface-container hover:bg-surface-container-highest dark:hover:bg-surface-container-highest py-sm px-md transition-colors group" href="#" id="lien-destination">
+<span class="material-symbols-outlined text-[20px]" data-icon="folder_open">folder_open</span>
+<span class="font-body-md text-body-md truncate">Dossier de sortie</span>
+</a>
+</li>
+</ul>
+<!-- Recent Courses List -->
+<div class="mt-lg px-md mb-xs">
+<h2 class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Recent courses</h2>
+</div>
+<ul class="space-y-[1px]" id="liste-recents">
+<li>
+<a class="flex items-center gap-sm text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container dark:hover:bg-surface-container hover:bg-surface-container-highest dark:hover:bg-surface-container-highest py-sm px-md transition-colors group pl-[32px]" href="#">
+<span class="material-symbols-outlined text-[16px] text-outline" data-icon="description">description</span>
+<span class="font-body-md text-body-md truncate text-sm">Génie Logiciel M1 - CM1</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-sm text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container dark:hover:bg-surface-container hover:bg-surface-container-highest dark:hover:bg-surface-container-highest py-sm px-md transition-colors group pl-[32px]" href="#">
+<span class="material-symbols-outlined text-[16px] text-outline" data-icon="description">description</span>
+<span class="font-body-md text-body-md truncate text-sm">Algo Avancée - TD3</span>
+</a>
+</li>
+</ul>
+</nav>
+<!-- Footer Navigation Group -->
+<nav aria-label="Footer Navigation" class="mt-auto pt-md border-t border-[#333333]">
+<ul class="space-y-[1px]">
+<li>
+<a id="link-parametres" class="flex items-center gap-sm py-sm px-md border-l-2 border-transparent text-on-surface-variant hover:bg-surface-container-highest transition-colors group" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="settings">settings</span>
+<span class="font-body-md text-body-md truncate">Paramètres</span>
+</a>
+</li>
+<li>
+<a id="link-aide" class="flex items-center gap-sm py-sm px-md border-l-2 border-transparent text-on-surface-variant hover:bg-surface-container-highest transition-colors group" href="#">
+<span class="material-symbols-outlined text-[20px]" data-icon="help_outline">help_outline</span>
+<span class="font-body-md text-body-md truncate">Aide</span>
+</a>
+</li>
+<li>
+<!-- Les drapeaux sont des SVG : Segoe UI Emoji n'a pas de glyphe pour les
+     emojis drapeaux, Windows les rendrait en lettres ("FR", "GB"). Le <select>
+     reste le porteur de la valeur, la liste visible ne fait que le piloter. -->
+<div class="relative">
+<button id="lang-bouton" type="button"
+  class="flex items-center gap-sm w-full text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface py-sm px-md transition-colors">
+<span id="lang-drapeau" class="flex shrink-0"></span>
+<span id="lang-nom" class="font-body-md text-body-md truncate flex-1 text-left">Français</span>
+<span class="material-symbols-outlined text-[16px] shrink-0">unfold_more</span>
+</button>
+<ul id="lang-liste" class="hidden absolute bottom-full left-md right-md mb-xs z-20 rounded-lg border border-[#333333] bg-[#252525] py-xs shadow-lg"></ul>
+<select id="lang-select" class="hidden">
+<option value="fr" selected>Français</option>
+<option value="en">English</option>
+<option value="es">Español</option>
+<option value="de">Deutsch</option>
+</select>
+</div>
+</li>
+</ul>
+</nav>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="flex-1 flex flex-col h-screen overflow-hidden bg-[#1e1e1e]">
+<!-- TopAppBar Placeholder (Hidden on Desktop if SideNav is present, but kept structural) -->
+<header class="w-full h-16 flex shrink-0 border-b border-[#333333] items-center px-lg bg-surface md:hidden">
+<h1 class="font-headline-md text-headline-md font-semibold text-on-surface">Incipit</h1>
+</header>
+<!-- Vue cours (par defaut) -->
+<div id="vue-cours" class="flex-1 overflow-y-auto p-lg flex justify-center">
+<div class="w-full max-w-4xl space-y-md pb-lg">
+<!-- Page Header -->
+<header class="mb-md flex items-start justify-between gap-lg">
+<div>
+<div class="flex items-center gap-xs mb-xs">
+<h2 class="font-display-lg text-display-lg text-on-surface">Nouveau cours</h2>
+<button type="button" data-aide="generer" title="Aide : générer un cours"
+  class="flex items-center justify-center w-5 h-5 rounded-full text-on-surface-variant/70 hover:text-on-surface hover:bg-surface-container-highest transition-colors">
+  <span class="material-symbols-outlined text-[16px]" data-icon="help">help</span>
+</button>
+</div>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Générez un cours structuré à partir de vos documents</p>
+</div>
+<!-- Coffre Obsidian : aligne sur le titre, hors du flux de generation -->
+<div class="flex flex-col items-end gap-xs shrink-0">
+  <div class="flex items-center gap-sm">
+    <span id="badge-obsidian"
+      class="hidden items-center gap-xs px-sm py-[3px] rounded-full border text-xs font-medium cursor-default shrink-0
+             bg-[rgba(124,58,237,0.12)] border-[rgba(124,58,237,0.35)] text-violet-400"
+      title="Obsidian doit être installé pour utiliser cette fonctionnalité">
+      ⚠ Obsidian requis
+    </span>
+    <button id="btn-ouvrir-vault"
+      class="shrink-0 flex items-center gap-sm px-md py-sm rounded-lg border border-[#333333] bg-[#252525] text-on-surface-variant hover:border-[#7c3aed]/40 hover:text-on-surface hover:bg-[#2d2d2d] transition-all group">
+      <svg width="18" height="18" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" class="shrink-0 opacity-70 group-hover:opacity-100 transition-opacity">
+        <polygon points="50,5 90,30 90,70 50,95 10,70 10,30" fill="url(#obsGrad)" stroke="#7c3aed" stroke-width="2"/>
+        <polygon points="50,20 75,35 75,65 50,80 25,65 25,35" fill="none" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="4 2"/>
+        <defs><linearGradient id="obsGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#7c3aed" stop-opacity="0.6"/><stop offset="100%" stop-color="#4c1d95" stop-opacity="0.8"/></linearGradient></defs>
+      </svg>
+      <span class="font-body-md text-body-md whitespace-nowrap">Ouvrir dans Obsidian</span>
+    </button>
+    <button type="button" data-aide="obsidian" title="Aide : Obsidian"
+      class="flex items-center justify-center w-8 h-8 shrink-0 rounded-lg border border-[#333333] bg-[#252525] text-on-surface-variant hover:text-on-surface hover:bg-[#2d2d2d] transition-colors">
+      <span class="material-symbols-outlined text-[16px]" data-icon="help">help</span>
+    </button>
+  </div>
+  <p id="hint-obsidian" class="hidden font-label-sm text-label-sm text-on-surface-variant text-right">
+    Pas encore installé ?
+    <a href="https://obsidian.md" target="_blank"
+       class="text-violet-400 hover:text-violet-300 underline underline-offset-2 transition-colors">
+      Téléchargez Obsidian sur obsidian.md
+    </a>
+  </p>
+</div>
+</header>
+<!-- Section 1: Informations de la séance -->
+<section class="obsidian-panel rounded-lg p-md">
+<h3 class="font-title-sm text-title-sm text-on-surface mb-sm pb-xs border-b border-[#333333]">Informations de la séance</h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-md">
+<div class="space-y-xs">
+<label class="font-label-sm text-label-sm text-on-surface-variant block" for="subject-select">Matière</label>
+<select class="w-full h-9 px-sm rounded border border-[#333333] bg-[#1e1e1e] text-on-surface focus:border-primary-container focus:ring-0 transition-colors" id="subject-select">
+<option disabled="" selected="" value="">Sélectionner une matière...</option>
+<option value="informatique">Informatique</option>
+<option value="maths">Mathématiques</option>
+<option value="physique">Physique</option>
+</select>
+</div>
+<div class="space-y-xs">
+<label class="font-label-sm text-label-sm text-on-surface-variant block" for="chapter-title">Titre du chapitre</label>
+<input class="w-full h-9 px-sm rounded border border-[#333333] bg-[#1e1e1e] text-on-surface focus:border-primary-container focus:ring-0 transition-colors placeholder:text-outline" id="chapter-title" placeholder="Ex: Introduction aux pointeurs" type="text"/>
+</div>
+</div>
+<div class="mt-sm space-y-xs">
+<span class="font-label-sm text-label-sm text-on-surface-variant block">Type de séance</span>
+<div class="flex flex-wrap gap-md">
+<label class="flex items-center gap-xs cursor-pointer group">
+<input checked="" class="w-4 h-4 text-primary-container border-[#4a4455] bg-transparent focus:ring-primary-container focus:ring-offset-[#252525]" name="session_type" type="radio" value="cm"/>
+<span class="font-body-md text-body-md text-on-surface group-hover:text-primary transition-colors">CM (Cours Magistral)</span>
+</label>
+<label class="flex items-center gap-xs cursor-pointer group">
+<input class="w-4 h-4 text-primary-container border-[#4a4455] bg-transparent focus:ring-primary-container focus:ring-offset-[#252525]" name="session_type" type="radio" value="td"/>
+<span class="font-body-md text-body-md text-on-surface group-hover:text-primary transition-colors">TD (Travaux Dirigés)</span>
+</label>
+<label class="flex items-center gap-xs cursor-pointer group">
+<input class="w-4 h-4 text-primary-container border-[#4a4455] bg-transparent focus:ring-primary-container focus:ring-offset-[#252525]" name="session_type" type="radio" value="tp"/>
+<span class="font-body-md text-body-md text-on-surface group-hover:text-primary transition-colors">TP (Travaux Pratiques)</span>
+</label>
+</div>
+</div>
+</section>
+<!-- Section 2: Photos et PDF du prof -->
+<section class="obsidian-panel rounded-lg p-md flex flex-col">
+<div class="flex justify-between items-center mb-sm pb-xs border-b border-[#333333]">
+<h3 class="font-title-sm text-title-sm text-on-surface">Photos et PDF du prof</h3>
+<div class="flex gap-sm">
+<button class="flex items-center gap-xs px-md py-sm bg-transparent border border-[#333333] hover:bg-[#3d3d3d] text-[#e0e0e0] rounded transition-colors font-label-sm text-label-sm" id="btn-ouvrir-dossier" type="button">
+<span class="material-symbols-outlined text-[16px]" data-icon="folder_open">folder_open</span>
+                                Ouvrir le dossier
+                            </button>
+<button class="flex items-center gap-xs px-md py-sm bg-primary-container hover:brightness-110 text-white rounded transition-all font-label-sm text-label-sm" id="btn-ajouter" type="button">
+<span class="material-symbols-outlined text-[16px]" data-icon="add">add</span>
+                                Ajouter des fichiers
+                            </button>
+</div>
+</div>
+<!-- File List / Table Area -->
+<div class="border border-[#333333] rounded overflow-hidden bg-[#1e1e1e]">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-[#333333] bg-[#252525]">
+<th class="py-sm px-md font-label-sm text-label-sm text-on-surface-variant font-medium w-12 text-center">Type</th>
+<th class="py-sm px-md font-label-sm text-label-sm text-on-surface-variant font-medium">Nom du fichier</th>
+<th class="py-sm px-md font-label-sm text-label-sm text-on-surface-variant font-medium w-24">Taille</th>
+<th class="py-sm px-md font-label-sm text-label-sm text-on-surface-variant font-medium w-16 text-center">Action</th>
+</tr>
+</thead>
+<tbody id="table-fichiers">
+<tr class="border-b border-[#333333] hover:bg-[#252525] transition-colors group">
+<td class="py-sm px-md text-center">
+<span class="material-symbols-outlined text-error text-[20px]" data-icon="picture_as_pdf">picture_as_pdf</span>
+</td>
+<td class="py-sm px-md font-body-md text-body-md text-on-surface truncate">notes_cm1_part1.pdf</td>
+<td class="py-sm px-md font-code text-code text-on-surface-variant">2.4 MB</td>
+<td class="py-sm px-md text-center">
+<button aria-label="Supprimer" class="text-outline-variant hover:text-error transition-colors p-xs rounded hover:bg-surface-container">
+<span class="material-symbols-outlined text-[18px]" data-icon="delete">delete</span>
+</button>
+</td>
+</tr>
+<tr class="hover:bg-[#252525] transition-colors group">
+<td class="py-sm px-md text-center">
+<span class="material-symbols-outlined text-primary text-[20px]" data-icon="image">image</span>
+</td>
+<td class="py-sm px-md font-body-md text-body-md text-on-surface truncate">tableau_algo_schema.jpg</td>
+<td class="py-sm px-md font-code text-code text-on-surface-variant">845 KB</td>
+<td class="py-sm px-md text-center">
+<button aria-label="Supprimer" class="text-outline-variant hover:text-error transition-colors p-xs rounded hover:bg-surface-container">
+<span class="material-symbols-outlined text-[18px]" data-icon="delete">delete</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+<!-- Empty State Example (Hidden in this view, but good for structure) -->
+<!-- 
+                        <div class="py-xl flex flex-col items-center justify-center text-on-surface-variant opacity-50">
+                            <span class="material-symbols-outlined text-[48px] mb-sm" data-icon="upload_file">upload_file</span>
+                            <p class="font-body-md text-body-md">Aucun fichier ajouté.</p>
+                        </div> 
+                        -->
+</div>
+</section>
+<!-- Section 3: Moteur IA -->
+<section class="obsidian-panel rounded-lg p-md flex flex-col">
+  <!-- L'etat du moteur tient sur la ligne de titre : c'est la meme information
+       que "Moteur IA", pas une seconde ligne a lire. Le detail (destination, ou
+       la raison d'un moteur non configure) passe en infobulle, et le texte lui-meme
+       porte le souci quand il y en a un -- avant, la raison etait ecrite dans un
+       <p class="hidden"> que personne ne voyait jamais. -->
+  <div class="flex items-center justify-between gap-md mb-sm pb-xs border-b border-[#333333]">
+    <div class="flex items-center gap-xs shrink-0">
+      <h3 class="font-title-sm text-title-sm text-on-surface">Moteur IA</h3>
+      <button type="button" data-aide="moteurs" title="Aide : moteurs IA et clés API"
+        class="flex items-center justify-center w-5 h-5 rounded-full text-on-surface-variant/70 hover:text-on-surface hover:bg-surface-container-highest transition-colors">
+        <span class="material-symbols-outlined text-[16px]" data-icon="help">help</span>
+      </button>
+    </div>
+    <div class="flex items-center gap-xs min-w-0" id="etat-moteur">
+      <span class="material-symbols-outlined text-[#4ade80] text-[18px] shrink-0" data-icon="check_circle" data-weight="fill" id="etat-icone">check_circle</span>
+      <span class="font-label-sm text-label-sm text-on-surface-variant truncate" id="etat-titre">L'IA est prête</span>
+    </div>
+  </div>
+
+  <!-- Rempli par app.js depuis /api/moteurs -->
+  <div class="grid grid-cols-2 gap-sm" id="liste-moteurs"></div>
+
+  <!-- Disclosure legere : le bandeau encadre precedent coutait 58px de haut
+       pour trois mots, alors qu'il est replie la plupart du temps. -->
+  <details class="group mt-sm" id="options-avancees">
+    <summary class="flex items-center gap-xs cursor-pointer select-none py-xs rounded text-on-surface-variant hover:text-on-surface transition-colors list-none">
+      <span class="material-symbols-outlined text-[18px] transition-transform group-open:rotate-90" data-icon="chevron_right">chevron_right</span>
+      <span class="font-label-sm text-label-sm font-medium uppercase tracking-wider">Options avancées &amp; API</span>
+    </summary>
+    <div class="pt-sm space-y-sm">
+      <div class="grid grid-cols-2 gap-sm">
+        <div class="space-y-xs">
+          <div class="flex items-center justify-between gap-xs">
+            <label class="font-label-sm text-label-sm text-on-surface-variant" for="model-select">Modèle de rédaction</label>
+            <button class="hidden items-center gap-xs pl-xs pr-sm py-[2px] rounded-full border border-[#333333] bg-[#1e1e1e] hover:border-[#4a4455] font-label-sm text-label-sm text-on-surface-variant transition-colors" id="pastille-modele" type="button"></button>
+          </div>
+          <select id="model-select" class="w-full h-9 px-sm rounded border border-[#333333] bg-[#1e1e1e] text-on-surface focus:border-primary-container focus:ring-0"></select>
+        </div>
+        <div class="space-y-xs hidden" id="bloc-transcripteur">
+          <div class="flex items-center justify-between gap-xs">
+            <label class="font-label-sm text-label-sm text-on-surface-variant" for="transcripteur-select">Qui lit tes photos ?</label>
+            <button class="hidden items-center gap-xs pl-xs pr-sm py-[2px] rounded-full border border-[#333333] bg-[#1e1e1e] hover:border-[#4a4455] font-label-sm text-label-sm text-on-surface-variant transition-colors" id="pastille-transcripteur" type="button"></button>
+          </div>
+          <select id="transcripteur-select" class="w-full h-9 px-sm rounded border border-[#333333] bg-[#1e1e1e] text-on-surface focus:border-primary-container focus:ring-0"></select>
+        </div>
+      </div>
+
+      <div class="space-y-xs p-sm rounded bg-[#1e1e1e] border border-[#333333] hidden" id="bloc-cle">
+        <div class="flex items-center gap-sm">
+          <label class="font-label-sm text-label-sm text-on-surface-variant shrink-0 w-[130px] truncate" id="cle-titre" for="cle-valeur">Clé API</label>
+          <input type="password" id="cle-valeur" class="flex-1 min-w-0 h-9 px-sm rounded border border-[#333333] bg-[#252525] text-on-surface font-code text-code focus:border-primary-container focus:ring-0" autocomplete="off" spellcheck="false"/>
+          <button type="button" id="btn-cle" class="h-9 px-md rounded bg-primary-container hover:brightness-110 text-white font-label-sm text-label-sm transition-all shrink-0">Enregistrer</button>
+        </div>
+        <div class="flex items-center justify-between gap-sm pl-[138px]">
+          <p class="font-label-sm text-label-sm text-on-surface-variant truncate" id="cle-message"></p>
+          <button type="button" id="btn-catalogue" class="hidden font-label-sm text-label-sm text-primary hover:brightness-125 transition-all shrink-0">Charger la liste</button>
+        </div>
+      </div>
+    </div>
+  </details>
+</section>
+<!-- Barre d'action : l'avancement et le bouton sur la meme ligne. Empiles, ils
+     coutaient une rangee entiere, et l'etat se lisait loin du bouton qui le produit. -->
+<div class="pt-xs pb-lg">
+  <div class="flex items-end gap-lg">
+    <div class="flex-1 min-w-0 pb-xs">
+      <div class="flex justify-between gap-sm mb-xs">
+        <span class="font-label-sm text-label-sm text-on-surface-variant truncate" id="progres-texte">Prêt à générer</span>
+        <span class="font-code text-code text-on-surface-variant shrink-0" id="progres-pct">0%</span>
+      </div>
+      <div class="w-full h-1.5 bg-[#333333] rounded-full overflow-hidden">
+        <div class="h-full rounded-full w-0 transition-all duration-300"
+             style="background: linear-gradient(90deg, #7c3aed, #a78bfa);"
+             id="progres-barre"></div>
+      </div>
+    </div>
+
+    
+
+    <button id="btn-generer" type="button"
+      class="btn-primaire group shrink-0 flex items-center gap-sm h-10 px-lg rounded-lg text-white font-medium text-[14px] tracking-[0.01em]">
+      <svg width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" class="shrink-0 transition-transform duration-200 group-hover:translate-x-[2px]">
+        <path d="M3 2L11 7L3 12V2Z" fill="currentColor"/>
+      </svg>
+      <span>Générer le cours</span>
+      <span class="touche rounded text-[10px] font-mono leading-none px-[5px] py-[2px] ml-xs">Ctrl+G</span>
+    </button>
+  </div>
+</div>
+</div>
+</div>
+<!-- Vue Parametres : prend la place de la vue cours dans la meme fenetre,
+     plutot qu'un calque flottant par-dessus. -->
+<div id="vue-parametres" class="hidden flex-1 flex flex-col overflow-hidden">
+    <div class="flex items-center gap-md px-lg py-md border-b border-[#333333] shrink-0">
+      <button id="btn-fermer-parametres" class="flex items-center gap-xs -ml-sm px-sm py-xs rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors">
+        <span class="material-symbols-outlined text-[18px]" data-icon="arrow_back">arrow_back</span>
+        <span class="font-body-md text-body-md">Cours</span>
+      </button>
+      <h2 class="font-title-sm text-title-sm text-on-surface" id="modal-title">Paramètres</h2>
+    </div>
+    <div class="flex flex-1 overflow-hidden">
+      <nav class="w-[240px] shrink-0 border-r border-[#333333] bg-[#1e1e1e] py-md flex flex-col gap-xs overflow-y-auto" id="parametres-nav">
+        <button data-onglet="onglet-general" class="parametres-onglet flex items-center gap-sm px-md py-sm bg-[#2d2d2d] border-l-[2px] border-primary-container text-on-surface w-full text-left transition-colors font-body-md text-body-md">
+          <span class="material-symbols-outlined text-[18px]" data-icon="settings">settings</span>
+          <span>Général</span>
+        </button>
+        <button data-onglet="onglet-api" class="parametres-onglet flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-[#2d2d2d] border-l-[2px] border-transparent w-full text-left transition-colors font-body-md text-body-md">
+          <span class="material-symbols-outlined text-[18px]" data-icon="api">api</span>
+          <span>API &amp; Moteurs</span>
+        </button>
+        <button data-onglet="onglet-journal" class="parametres-onglet flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-[#2d2d2d] border-l-[2px] border-transparent w-full text-left transition-colors font-body-md text-body-md">
+          <span class="material-symbols-outlined text-[18px]" data-icon="description">description</span>
+          <span>Journal</span>
+        </button>
+      </nav>
+      <div class="flex-1 overflow-y-auto bg-[#1e1e1e] p-lg">
+        <div class="max-w-2xl mx-auto">
+          <section id="onglet-general" class="space-y-lg">
+            <h3 class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider border-b border-[#333333] pb-sm">Général</h3>
+            <div class="space-y-md">
+              <div class="flex flex-col gap-xs">
+                <label class="font-label-sm text-label-sm text-on-surface" for="settings-output-path">Dossier de sortie</label>
+                <div class="flex items-center gap-sm">
+                  <input class="flex-1 bg-[#1e1e1e] border border-[#333333] rounded-lg px-md py-sm text-on-surface focus:outline-none focus:border-primary-container font-code text-code" id="settings-output-path" readonly type="text" value="..."/>
+                  <button id="btn-browse-folder" class="bg-[#333333] text-[#e0e0e0] hover:bg-[#3d3d3d] px-md py-sm rounded-lg font-body-md text-body-md transition-colors border border-transparent whitespace-nowrap">
+                      Ouvrir...
+                  </button>
+                </div>
+                <p class="font-label-sm text-label-sm text-on-surface-variant mt-1">L'emplacement où les fichiers générés sont sauvegardés.</p>
+              </div>
+              <div class="flex flex-col gap-xs pt-sm border-t border-[#333333]">
+                <label class="font-label-sm text-label-sm text-on-surface">Longueur des cours</label>
+                <p class="font-label-sm text-label-sm text-on-surface-variant">Chaque cours vise <strong class="text-on-surface">6 000 mots</strong> au maximum, toutes sections comprises : au-delà, un cours devient long à lire et à corriger pour un gain de fond marginal.</p>
+              </div>
+              <div class="flex flex-col gap-xs pt-sm border-t border-[#333333]">
+                <label class="font-label-sm text-label-sm text-on-surface">Confidentialité</label>
+                <p class="font-label-sm text-label-sm text-on-surface-variant">Réaffiche l'avertissement sur les données envoyées au modèle d'IA, si tu avais coché « Ne plus afficher ce message ».</p>
+                <button id="btn-reafficher-confidentialite" class="bg-[#333333] text-[#e0e0e0] hover:bg-[#3d3d3d] px-md py-sm rounded-lg font-body-md text-body-md transition-colors border border-transparent w-fit">
+                    Réafficher l'avertissement
+                </button>
+              </div>
+              <div class="flex flex-col gap-xs pt-sm border-t border-[#333333]">
+                <label class="font-label-sm text-label-sm text-on-surface">Tutoriel</label>
+                <p class="font-label-sm text-label-sm text-on-surface-variant">Réaffiche l'explication de démarrage, si tu avais coché « Ne plus afficher ce message ».</p>
+                <button id="btn-reafficher-tutoriel" class="bg-[#333333] text-[#e0e0e0] hover:bg-[#3d3d3d] px-md py-sm rounded-lg font-body-md text-body-md transition-colors border border-transparent w-fit">
+                    Réafficher le tutoriel
+                </button>
+              </div>
+            </div>
+          </section>
+          <section id="onglet-api" class="space-y-lg hidden">
+            <h3 class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider border-b border-[#333333] pb-sm flex items-center justify-between">
+              <span>API &amp; Moteurs</span>
+              <button type="button" data-aide="moteurs" title="Aide : moteurs IA et clés API" class="flex items-center justify-center w-5 h-5 rounded-full text-on-surface-variant/70 hover:text-on-surface hover:bg-surface-container-highest transition-colors normal-case tracking-normal">
+                <span class="material-symbols-outlined text-[16px]" data-icon="help">help</span>
+              </button>
+            </h3>
+            <div class="space-y-lg">
+              <div class="flex flex-col gap-xs">
+                <label class="font-label-sm text-label-sm text-on-surface flex justify-between" for="settings-nvidia-key">
+                  <span>Clé API NVIDIA NIM</span>
+                  <a class="text-primary-container hover:text-primary transition-colors" href="https://build.nvidia.com" target="_blank">Obtenir une clé</a>
+                </label>
+                <div class="flex items-center gap-sm">
+                  <div class="relative flex-1">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-on-surface-variant">
+                      <span class="material-symbols-outlined text-[18px]" data-icon="key">key</span>
+                    </span>
+                    <input class="w-full bg-[#1e1e1e] border border-[#333333] rounded-lg pl-10 pr-md py-sm text-on-surface focus:outline-none focus:border-primary-container font-code text-code" id="settings-nvidia-key" placeholder="nvapi-..." type="password"/>
+                  </div>
+                  <button id="btn-save-nvidia" class="bg-[#333333] text-[#e0e0e0] hover:bg-[#3d3d3d] px-md py-sm rounded-lg font-body-md text-body-md transition-colors whitespace-nowrap">
+                      Enregistrer
+                  </button>
+                </div>
+              </div>
+              <div class="flex flex-col gap-xs">
+                <label class="font-label-sm text-label-sm text-on-surface flex justify-between" for="settings-gemini-key">
+                  <span>Clé API Google Gemini</span>
+                  <a class="text-primary-container hover:text-primary transition-colors" href="https://aistudio.google.com" target="_blank">Obtenir une clé</a>
+                </label>
+                <div class="flex items-center gap-sm">
+                  <div class="relative flex-1">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-on-surface-variant">
+                      <span class="material-symbols-outlined text-[18px]" data-icon="key">key</span>
+                    </span>
+                    <input class="w-full bg-[#1e1e1e] border border-[#333333] rounded-lg pl-10 pr-md py-sm text-on-surface focus:outline-none focus:border-primary-container font-code text-code" id="settings-gemini-key" placeholder="AIzaSy-..." type="password"/>
+                  </div>
+                  <button id="btn-save-gemini" class="bg-[#333333] text-[#e0e0e0] hover:bg-[#3d3d3d] px-md py-sm rounded-lg font-body-md text-body-md transition-colors whitespace-nowrap">
+                      Enregistrer
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+          <section id="onglet-journal" class="space-y-lg hidden">
+            <h3 class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider border-b border-[#333333] pb-sm flex items-center justify-between">
+              <span>Journal</span>
+              <button type="button" data-aide="journal" title="Aide : journal" class="flex items-center justify-center w-5 h-5 rounded-full text-on-surface-variant/70 hover:text-on-surface hover:bg-surface-container-highest transition-colors normal-case tracking-normal">
+                <span class="material-symbols-outlined text-[16px]" data-icon="help">help</span>
+              </button>
+            </h3>
+            <div class="flex flex-col gap-xs">
+              <p class="font-label-sm text-label-sm text-on-surface-variant">L'application ne garde aucune console ouverte : tout ce qu'elle fait (démarrage, génération ligne par ligne, erreurs) est écrit dans un fichier de log, utile si quelque chose se passe mal.</p>
+              <div class="pt-sm">
+                <button id="btn-ouvrir-logs" class="flex items-center gap-sm bg-[#333333] text-[#e0e0e0] hover:bg-[#3d3d3d] px-md py-sm rounded-lg font-body-md text-body-md transition-colors border border-transparent w-fit">
+                  <span class="material-symbols-outlined text-[18px]" data-icon="description">description</span>
+                  Ouvrir le fichier de logs
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+</div>
+
+<!-- Vue Aide -->
+<div id="vue-aide" class="hidden flex-1 flex flex-col overflow-hidden">
+    <div class="flex items-center gap-md px-lg py-md border-b border-[#333333] shrink-0">
+      <button id="btn-fermer-aide" class="flex items-center gap-xs -ml-sm px-sm py-xs rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors">
+        <span class="material-symbols-outlined text-[18px]" data-icon="arrow_back">arrow_back</span>
+        <span class="font-body-md text-body-md">Cours</span>
+      </button>
+      <h2 class="font-title-sm text-title-sm text-on-surface">Aide &amp; Documentation</h2>
+    </div>
+    <div class="flex flex-1 overflow-hidden">
+      <nav class="w-[260px] shrink-0 border-r border-[#333333] bg-[#1e1e1e] py-md flex flex-col overflow-y-auto">
+        <div class="px-md mb-xs">
+          <span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Guide Utilisateur</span>
+        </div>
+        <ul id="aide-sidebar-list" class="flex flex-col gap-xs px-sm">
+          <!-- Populated by JS -->
+        </ul>
+      </nav>
+      <div class="flex-1 bg-[#1e1e1e] overflow-y-auto relative">
+        <div id="aide-content-area" class="max-w-3xl mx-auto p-lg md:p-xl lg:py-xl lg:px-[60px]">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+</div>
+</main>
+
+<!-- Avertissement confidentialite : donnees envoyees au modele d'IA -->
+<div id="modal-confidentialite" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-lg">
+<div class="max-w-md w-full bg-[#252525] border border-[#333333] rounded-lg shadow-lg p-lg space-y-md">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-[22px] text-tertiary" data-icon="privacy_tip">privacy_tip</span>
+<h3 class="font-title-sm text-title-sm text-on-surface">Avant d'envoyer tes documents</h3>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">
+Tout ce que tu fournis (photos, PDF, titres) est envoyé au moteur d'IA sélectionné pour rédiger le cours.
+Selon le fournisseur, ces données peuvent être conservées et réutilisées pour entraîner leurs modèles —
+évite d'y mettre des informations personnelles, confidentielles ou soumises à un accord de confidentialité.
+</p>
+<label class="flex items-center gap-xs cursor-pointer select-none">
+<input type="checkbox" id="confidentialite-ne-plus-afficher" class="w-4 h-4 rounded border-[#4a4455] bg-transparent text-primary-container focus:ring-primary-container focus:ring-offset-[#252525]"/>
+<span class="font-body-md text-body-md text-on-surface-variant">Ne plus afficher ce message</span>
+</label>
+<div class="flex justify-end gap-sm pt-xs">
+<button id="btn-confidentialite-annuler" type="button" class="px-md py-sm rounded-lg border border-[#333333] text-on-surface-variant hover:bg-[#2d2d2d] transition-colors font-body-md text-body-md">Annuler</button>
+<button id="btn-confidentialite-continuer" type="button" class="btn-primaire px-md py-sm rounded-lg text-white font-medium text-[14px]">Continuer</button>
+</div>
+</div>
+</div>
+
+<!-- Tutoriel de premier lancement : comment marche l'app -->
+<div id="modal-tutoriel" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-lg">
+<div class="max-w-md w-full bg-[#252525] border border-[#333333] rounded-lg shadow-lg p-lg space-y-md">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-[22px] text-primary-container" data-icon="school">school</span>
+<h3 class="font-title-sm text-title-sm text-on-surface">Bienvenue sur Incipit</h3>
+</div>
+<ol class="font-body-md text-body-md text-on-surface-variant space-y-sm list-decimal list-inside">
+<li><strong class="text-on-surface">Choisis</strong> une matière, un type de séance et un titre en haut de l'écran.</li>
+<li><strong class="text-on-surface">Ajoute</strong> tes documents (photos, PDF...) : ce sont eux qui servent de base au cours.</li>
+<li><strong class="text-on-surface">Génère le cours</strong> : le bouton se change en « Ouvrir le résultat » une fois le PDF prêt.</li>
+<li><strong class="text-on-surface">Exercices</strong> fabrique ensuite un TP interactif, une fiche et des flashcards à partir du cours généré.</li>
+</ol>
+<label class="flex items-center gap-xs cursor-pointer select-none">
+<input type="checkbox" id="tutoriel-ne-plus-afficher" class="w-4 h-4 rounded border-[#4a4455] bg-transparent text-primary-container focus:ring-primary-container focus:ring-offset-[#252525]"/>
+<span class="font-body-md text-body-md text-on-surface-variant">Ne plus afficher ce message</span>
+</label>
+<div class="flex justify-end gap-sm pt-xs">
+<button id="btn-tutoriel-fermer" type="button" class="btn-primaire px-md py-sm rounded-lg text-white font-medium text-[14px]">Compris</button>
+</div>
+</div>
+</div>
+
+<script src="app.js"></script>
+</body></html>
+

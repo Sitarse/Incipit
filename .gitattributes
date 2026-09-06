@@ -1,0 +1,20 @@
+# Normalise les fins de ligne dans le depot (LF), et surtout : protege les
+# fichiers qui cassent si git les convertit.
+
+* text=auto
+
+# Scripts Unix : un CRLF ici donne "bad interpreter: /bin/sh^M" au clonage
+# sous Linux ou macOS. Ils doivent rester en LF, quelle que soit la machine.
+*.sh                              text eol=lf
+launchers/Incipit.app/Contents/MacOS/incipit text eol=lf
+
+# Scripts Windows : l'inverse. cmd.exe veut du CRLF.
+*.bat                             text eol=crlf
+*.cmd                             text eol=crlf
+*.vbs                             text eol=crlf
+
+# Binaires : jamais touches.
+*.png                             binary
+*.ico                             binary
+*.jpg                             binary
+*.pdf                             binary
