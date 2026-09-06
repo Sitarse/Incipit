@@ -192,6 +192,23 @@ jobs:
             artifacts/Incipit-windows.zip
             artifacts/Incipit-linux.tar.gz
             artifacts/Incipit-macos.zip
-          generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          generate_release_notes: false
+          body: |
+            ## Incipit v1.0.0
+            
+            Three standalone executables — Windows, Linux, macOS. Download your platform's archive, extract, and run. No installation needed.
+            
+            ### What's inside
+            - **Incipit-windows.zip** → folder with `Incipit.exe` + `uv.exe`
+            - **Incipit-linux.tar.gz** → `Incipit` binary + `Incipit.desktop`
+            - **Incipit-macos.zip** → `Incipit.app` bundle
+            
+            ### Requirements
+            - **Executable**: none — Python, uv, deps bundled. Chrome/Edge for PDF (pre-installed on Win/macOS, `chromium` on Linux).
+            - **Optional**: [Obsidian](https://obsidian.md/download) to group courses in a vault.
+            
+            ### Engines
+            - **free (NVIDIA NIM)** — free, needs `nvapi-…` key
+            - **claude-cli** — needs Claude Code subscription + `claude` CLI
+            
+            See [README](https://github.com/Sitarse/Incipit#readme) for full docs.
