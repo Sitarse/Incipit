@@ -36,6 +36,16 @@ Then copy `config/keys.env.example` to `config/keys.env` next to the executable 
 
 ---
 
+## Requirements
+
+| Mode | Prerequisites |
+|---|---|
+| **Executable** (downloaded from Releases) | **None** — Python, `uv`, Flask, pywebview, generator, md2pdf, exercices all bundled. Chrome/Edge for PDF (pre-installed on Windows/macOS, `google-chrome` or `chromium` on Linux). |
+| **From source** | [`uv`](https://docs.astral.sh/uv/) only — installs all Python deps on first run via PEP 723 headers. Chrome/Edge for PDF. |
+| **PDF generation** (both modes) | Chrome / Edge / Chromium must be in `PATH`. Windows/macOS: automatic. Linux: `sudo apt install chromium` or `google-chrome-stable`. |
+
+---
+
 ## Distribution
 
 Three standalone executables (Windows, Linux, macOS) — app icon, no visible terminal, nothing to install alongside. `uv` and dependencies are embedded.
