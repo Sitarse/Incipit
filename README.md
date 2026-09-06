@@ -21,7 +21,7 @@ Drop your whiteboard photos, slide PDFs, notes. Incipit transcribes, structures,
 | 🖼️ **Reads your photos** | image-by-image transcription, cached — nothing re-read twice |
 | ✍️ **Writes properly** | outline then section-by-section drafting, not a summary |
 | 🎨 **Typesets** | math (KaTeX), diagrams (Mermaid), colored callouts, highlighting |
-| 🔗 **Speaks Obsidian** | vault provisioned automatically, internal links clickable |
+| 🔗 **Speaks Obsidian** | vault provisioned automatically, internal links clickable — optionally use [Obsidian](https://obsidian.md/download) to group all courses in one vault |
 | 💸 **Free tier possible** | NVIDIA NIM covers the whole pipeline |
 
 ---
