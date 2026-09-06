@@ -53,15 +53,3 @@ Three standalone executables (Windows, Linux, macOS) — app icon, no visible te
 | **claude-cli** | Claude Code subscription | `claude` CLI installed |
 
 Selected in the UI, stored in `config/keys.env`.
-
----
-
-## Contributing
-
-Each module has a self-test:
-
-```bash
-uv run generator.py --self-test
-uv run engine.py
-uv run md2pdf.py --self-test
-```
