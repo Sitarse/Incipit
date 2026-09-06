@@ -29,75 +29,48 @@ transcrit, structure, rédige, puis met en page.
 
 ## Installation
 
-### Version exécutable (recommandé, aucun prérequis)
+### Version exécutable (recommandée, aucun prérequis)
 
-Téléchargez l'exécutable de votre plateforme (voir [Distribution](#distribution)
-ci-dessous) et double-cliquez dessus. Rien à installer : Python, `uv` et les
-dépendances sont déjà dedans. Aucun terminal ne s'ouvre.
+Téléchargez l'exécutable de votre plateforme (voir **Distribution** ci-dessous) et double-cliquez dessus. Rien à installer : Python, `uv` et les dépendances sont déjà dedans. Aucun terminal ne s'ouvre.
 
-Copiez ensuite `config/keys.env.example` en `config/keys.env` à côté de
-l'exécutable (ou collez votre clé directement dans l'onglet **Réglages** de
-l'application, ce qui fait la même chose). Pour le PDF, Chrome ou Edge —
-déjà là sur presque toutes les machines.
+Copiez ensuite `config/keys.env.example` en `config/keys.env` à côté de l'exécutable (ou collez votre clé directement dans l'onglet **Réglages** de l'application, ce qui fait la même chose). Pour le PDF, Chrome ou Edge — déjà là sur presque toutes les machines.
 
-### Depuis le code source
+### Depuis le code source (frontend uniquement)
 
-**Un seul prérequis : [uv](https://docs.astral.sh/uv/).** Il installe le reste
-tout seul au premier lancement (dépendances déclarées en PEP 723 dans chaque
-script).
+Un seul prérequis : `uv`. Il installe le reste tout seul au premier lancement (dépendances déclarées en PEP 723 dans chaque script).
 
 ```bash
 # 1. Récupérer le projet
-git clone <votre-dépôt> incipit && cd incipit
+git clone https://github.com/Sitarse/Incipit.git incipit && cd incipit
 
 # 2. Créer sa configuration
 cp config/keys.env.example config/keys.env
 ```
 
-Puis collez votre clé NVIDIA (gratuite, sur <https://build.nvidia.com> →
-« Get API Key ») dans `config/keys.env`, ou directement dans l'onglet
-**Réglages** de l'application.
+Puis collez votre clé NVIDIA (gratuite, sur <https://build.nvidia.com> → « Get API Key ») dans `config/keys.env`, ou directement dans l'onglet **Réglages** de l'application.
 
 ---
 
 ## Distribution
 
-Trois exécutables autonomes, un par plateforme — icône de l'app, aucun
-terminal visible, rien à installer à côté :
+Trois exécutables autonomes (Windows, Linux, macOS) — icône de l'app,
+aucun terminal visible, rien à installer à côté. `uv` et les dépendances
+sont embarqués.
 
-| Plateforme | Fichier | Construit par |
-|---|---|---|
-| Windows | `dist/Incipit/Incipit.exe` | `packaging/build_windows.ps1` |
-| Linux | `dist/Incipit/Incipit` + `dist/Incipit.desktop` | `packaging/build_linux.sh` |
-| macOS | `dist/Incipit.app` | `packaging/build_macos.sh` |
-
-Ces scripts téléchargent `uv` (embarqué à côté de l'exécutable, pour que
-l'utilisateur final n'ait rien à installer) et appellent PyInstaller en mode
-`--onedir` + fenêtre sans console. Ils se lancent depuis la racine du projet,
-sur la plateforme cible :
-
-```bash
-powershell -File packaging/build_windows.ps1                            # Windows
-sh packaging/build_linux.sh                                              # Linux
-sh packaging/build_macos.sh                                              # macOS, icône .icns générée sur place
-```
-
-Le dossier `dist/` n'est pas commité (regénéré à chaque build) : distribuez
-son contenu (zip du dossier `Incipit/`, ou `Incipit.app`) séparément.
+**Téléchargement** : voir les [Releases GitHub](https://github.com/Sitarse/Incipit/releases)
+(publiées automatiquement à chaque tag `v*` via GitHub Actions).
 
 ---
 
 ## Lancer depuis le code source
 
-| Plateforme | Double-clic sur |
+| Plateforme | Double-clic |
 |---|---|
 | Windows | `launchers/Incipit.vbs` |
-| macOS | `launchers/Incipit.app` |
 | Linux | `launchers/incipit.sh` |
 | n'importe où | `uv run --script app.py` |
 
-**Bonus** — glissez un ou plusieurs `.md` sur `launchers/md-to-pdf.bat` pour
-les convertir en PDF sans ouvrir l'application.
+L'application s'ouvre dans une fenêtre native (pywebview) ou dans le navigateur par défaut si pywebview n'est pas installé.
 
 ---
 
