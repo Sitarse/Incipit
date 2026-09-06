@@ -34,13 +34,13 @@ jobs:
         run: |
           uv run --with pyinstaller --with flask --with pywebview pyinstaller app.py `
             --name Incipit --onedir --windowed --noconfirm `
-            --icon "frontend\logo.ico" `
+            --icon "${{ github.workspace }}\frontend\logo.ico" `
             --distpath dist --workpath build\windows --specpath packaging `
-            --add-data "frontend;frontend" `
-            --add-data "generator.py;." `
-            --add-data "md2pdf.py;." `
-            --add-data "exercices.py;." `
-            --add-data "config\keys.env.example;config" `
+            --add-data "${{ github.workspace }}\frontend;frontend" `
+            --add-data "${{ github.workspace }}\generator.py;." `
+            --add-data "${{ github.workspace }}\md2pdf.py;." `
+            --add-data "${{ github.workspace }}\exercices.py;." `
+            --add-data "${{ github.workspace }}\config\keys.env.example;config" `
             --add-binary "${{ github.workspace }}\packaging\vendor\windows\uv.exe;."
 
       - name: Zip Windows artifact
@@ -82,11 +82,11 @@ jobs:
           uv run --with pyinstaller --with flask --with pywebview pyinstaller app.py \
             --name Incipit --onedir --windowed --noconfirm \
             --distpath dist --workpath build/linux --specpath packaging \
-            --add-data "frontend:frontend" \
-            --add-data "generator.py:." \
-            --add-data "md2pdf.py:." \
-            --add-data "exercices.py:." \
-            --add-data "config/keys.env.example:config" \
+            --add-data "${{ github.workspace }}/frontend:frontend" \
+            --add-data "${{ github.workspace }}/generator.py:." \
+            --add-data "${{ github.workspace }}/md2pdf.py:." \
+            --add-data "${{ github.workspace }}/exercices.py:." \
+            --add-data "${{ github.workspace }}/config/keys.env.example:config" \
             --add-binary "${{ github.workspace }}/packaging/vendor/linux/uv:."
 
       - name: Create .desktop file
@@ -142,9 +142,9 @@ jobs:
             iconset="packaging/vendor/macos/logo.iconset"
             mkdir -p "$iconset"
             for taille in 16 32 64 128 256 512; do
-              sips -z $taille $taille frontend/logo.png --out "$iconset/icon_${taille}x${taille}.png" >/dev/null
+              sips -z $taille $taille ${{ github.workspace }}/frontend/logo.png --out "$iconset/icon_${taille}x${taille}.png" >/dev/null
               double=$((taille * 2))
-              sips -z $double $double frontend/logo.png --out "$iconset/icon_${taille}x${taille}@2x.png" >/dev/null
+              sips -z $double $double ${{ github.workspace }}/frontend/logo.png --out "$iconset/icon_${taille}x${taille}@2x.png" >/dev/null
             done
             iconutil -c icns "$iconset" -o "$icns"
           fi
@@ -155,11 +155,11 @@ jobs:
             --name Incipit --onedir --windowed --noconfirm \
             --icon "${{ github.workspace }}/packaging/vendor/macos/logo.icns" \
             --distpath dist --workpath build/macos --specpath packaging \
-            --add-data "frontend:frontend" \
-            --add-data "generator.py:." \
-            --add-data "md2pdf.py:." \
-            --add-data "exercices.py:." \
-            --add-data "config/keys.env.example:config" \
+            --add-data "${{ github.workspace }}/frontend:frontend" \
+            --add-data "${{ github.workspace }}/generator.py:." \
+            --add-data "${{ github.workspace }}/md2pdf.py:." \
+            --add-data "${{ github.workspace }}/exercices.py:." \
+            --add-data "${{ github.workspace }}/config/keys.env.example:config" \
             --add-binary "${{ github.workspace }}/packaging/vendor/macos/uv:."
 
       - name: Zip macOS artifact
