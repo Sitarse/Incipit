@@ -20,7 +20,7 @@ jobs:
       - name: Dependances runtime pour Qt headless
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb libxcb-cursor0 libxkbcommon-x11-0 libgl1
+          sudo apt-get install -y xvfb libxcb-cursor0 libxkbcommon-x11-0 libgl1 libegl1
 
       - name: Build (packaging/build_linux.sh)
         run: sh packaging/build_linux.sh
@@ -28,6 +28,7 @@ jobs:
       - name: Lancer et verifier
         run: |
           set -e
+          exec > /tmp/verify.log 2>&1
           xvfb-run -a -- dist/Incipit/Incipit > /tmp/stdout.log 2>&1 &
           sleep 10
 
@@ -62,6 +63,8 @@ jobs:
         if: failure()
         run: |
           {
+            echo "=== verify.log ==="
+            cat /tmp/verify.log 2>/dev/null || echo "(absent)"
             echo "=== ps aux ==="
             ps aux | grep -i incipit || true
             echo "=== stdout/stderr ==="
@@ -95,6 +98,7 @@ jobs:
       - name: Lancer et verifier
         run: |
           set -e
+          exec > /tmp/verify.log 2>&1
           binaire=$(find dist/Incipit.app -type f -name Incipit -perm -u+x | head -1)
           "$binaire" > /tmp/stdout.log 2>&1 &
           sleep 10
@@ -131,6 +135,8 @@ jobs:
         if: failure()
         run: |
           {
+            echo "=== verify.log ==="
+            cat /tmp/verify.log 2>/dev/null || echo "(absent)"
             echo "=== ps aux ==="
             ps aux | grep -i incipit || true
             echo "=== stdout/stderr ==="
