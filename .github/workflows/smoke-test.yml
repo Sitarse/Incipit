@@ -25,17 +25,21 @@ jobs:
       - name: Lancer et verifier
         run: |
           set -e
+          # xvfb-run est un wrapper : $! est son PID a lui, pas celui du
+          # binaire lance derriere. On identifie Incipit par son nom de
+          # process une fois demarre.
           xvfb-run -a dist/Incipit/Incipit &
-          pid=$!
-          sleep 8
+          sleep 10
 
-          if ! kill -0 "$pid" 2>/dev/null; then
-            echo "Le processus s'est arrete avant la fin du delai."
-            cat dist/Incipit/_internal/logs/app.log || true
+          pid=$(pgrep -x Incipit | head -1)
+          log="dist/Incipit/_internal/logs/app.log"
+          if [ -z "$pid" ]; then
+            echo "Processus Incipit introuvable apres le delai."
+            ps aux | grep -i incipit || true
+            cat "$log" 2>/dev/null || echo "(pas de log)"
             exit 1
           fi
 
-          log="dist/Incipit/_internal/logs/app.log"
           if grep -qi "traceback" "$log"; then
             echo "Traceback trouve dans les logs :"
             cat "$log"
@@ -72,14 +76,15 @@ jobs:
         run: |
           set -e
           open dist/Incipit.app
-          sleep 8
+          sleep 10
 
-          pid=$(pgrep -f "dist/Incipit.app/Contents/MacOS/Incipit" | head -1)
+          pid=$(pgrep -x Incipit | head -1)
           log=$(find dist/Incipit.app -name app.log | head -1)
 
           if [ -z "$pid" ]; then
             echo "Le processus n'a pas demarre ou s'est arrete."
-            cat "$log" || true
+            ps aux | grep -i incipit || true
+            cat "$log" 2>/dev/null || echo "(pas de log)"
             exit 1
           fi
 
