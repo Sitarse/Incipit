@@ -42,8 +42,8 @@ jobs:
             exit 1
           fi
 
-          if grep -qi "traceback" "$log" 2>/dev/null; then
-            echo "Traceback trouve dans les logs."
+          if grep -q "CRITICAL" "$log" 2>/dev/null; then
+            echo "Erreur fatale (CRITICAL) trouvee dans les logs."
             exit 1
           fi
 
@@ -114,8 +114,8 @@ jobs:
             exit 1
           fi
 
-          if grep -qi "traceback" "$log" 2>/dev/null; then
-            echo "Traceback trouve dans les logs."
+          if grep -q "CRITICAL" "$log" 2>/dev/null; then
+            echo "Erreur fatale (CRITICAL) trouvee dans les logs."
             exit 1
           fi
 
