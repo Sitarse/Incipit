@@ -20,7 +20,10 @@ jobs:
       - name: Dependances runtime pour Qt headless
         run: |
           sudo apt-get update
-          sudo apt-get install -y xvfb libxcb-cursor0 libxkbcommon-x11-0 libgl1 libegl1
+          sudo apt-get install -y xvfb libgl1 libegl1 \
+            libxcb1 libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
+            libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xfixes0 \
+            libxcb-xinerama0 libxkbcommon-x11-0
 
       - name: Build (packaging/build_linux.sh)
         run: sh packaging/build_linux.sh
@@ -116,7 +119,7 @@ jobs:
             exit 1
           fi
 
-          port=$(lsof -a -p "$pid" -iTCP -sTCP:LISTEN -Fn 2>/dev/null | grep -oE '127\.0\.0\.1:[0-9]+' | head -1 | cut -d: -f2)
+          port=$(lsof -a -p "$pid" -iTCP -sTCP:LISTEN -n -P 2>/dev/null | grep -oE '127\.0\.0\.1:[0-9]+' | head -1 | cut -d: -f2)
           if [ -z "$port" ]; then
             echo "Aucun port a l'ecoute trouve pour le PID $pid."
             exit 1
