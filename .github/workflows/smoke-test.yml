@@ -6,6 +6,9 @@ on:
     branches: [main]
     paths: ['.github/workflows/smoke-test.yml']
 
+permissions:
+  contents: write
+
 jobs:
   linux:
     name: Build + lancer sur Linux
@@ -25,31 +28,24 @@ jobs:
       - name: Lancer et verifier
         run: |
           set -e
-          # xvfb-run est un wrapper : $! est son PID a lui, pas celui du
-          # binaire lance derriere. On identifie Incipit par son nom de
-          # process une fois demarre.
-          xvfb-run -a dist/Incipit/Incipit &
+          xvfb-run -a -- dist/Incipit/Incipit > /tmp/stdout.log 2>&1 &
           sleep 10
 
           pid=$(pgrep -x Incipit | head -1)
           log="dist/Incipit/_internal/logs/app.log"
           if [ -z "$pid" ]; then
             echo "Processus Incipit introuvable apres le delai."
-            ps aux | grep -i incipit || true
-            cat "$log" 2>/dev/null || echo "(pas de log)"
             exit 1
           fi
 
-          if grep -qi "traceback" "$log"; then
-            echo "Traceback trouve dans les logs :"
-            cat "$log"
+          if grep -qi "traceback" "$log" 2>/dev/null; then
+            echo "Traceback trouve dans les logs."
             exit 1
           fi
 
           port=$(ss -tlnp 2>/dev/null | grep "pid=$pid," | grep -oE '127\.0\.0\.1:[0-9]+' | head -1 | cut -d: -f2)
           if [ -z "$port" ]; then
             echo "Aucun port a l'ecoute trouve pour le PID $pid."
-            cat "$log"
             exit 1
           fi
           echo "Serveur sur le port $port"
@@ -61,6 +57,30 @@ jobs:
 
           kill "$pid"
           echo "OK : build Linux fonctionnel."
+
+      - name: Publier le diagnostic si echec
+        if: failure()
+        run: |
+          {
+            echo "=== ps aux ==="
+            ps aux | grep -i incipit || true
+            echo "=== stdout/stderr ==="
+            cat /tmp/stdout.log 2>/dev/null || echo "(absent)"
+            echo "=== app.log ==="
+            cat dist/Incipit/_internal/logs/app.log 2>/dev/null || echo "(absent)"
+            echo "=== ldd ==="
+            ldd dist/Incipit/Incipit 2>&1 || true
+          } > /tmp/diag.txt
+          mkdir -p /tmp/repo-diag && cd /tmp/repo-diag
+          git init -q
+          git config user.email ci@local
+          git config user.name bot
+          cp /tmp/diag.txt diag.txt
+          git add -A
+          git commit -q -m "diag linux"
+          git push --force "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git" HEAD:ci-debug-linux
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   macos:
     name: Build + lancer sur macOS
@@ -75,7 +95,8 @@ jobs:
       - name: Lancer et verifier
         run: |
           set -e
-          open dist/Incipit.app
+          binaire=$(find dist/Incipit.app -type f -name Incipit -perm -u+x | head -1)
+          "$binaire" > /tmp/stdout.log 2>&1 &
           sleep 10
 
           pid=$(pgrep -x Incipit | head -1)
@@ -83,21 +104,17 @@ jobs:
 
           if [ -z "$pid" ]; then
             echo "Le processus n'a pas demarre ou s'est arrete."
-            ps aux | grep -i incipit || true
-            cat "$log" 2>/dev/null || echo "(pas de log)"
             exit 1
           fi
 
-          if grep -qi "traceback" "$log"; then
-            echo "Traceback trouve dans les logs :"
-            cat "$log"
+          if grep -qi "traceback" "$log" 2>/dev/null; then
+            echo "Traceback trouve dans les logs."
             exit 1
           fi
 
           port=$(lsof -a -p "$pid" -iTCP -sTCP:LISTEN -Fn 2>/dev/null | grep -oE '127\.0\.0\.1:[0-9]+' | head -1 | cut -d: -f2)
           if [ -z "$port" ]; then
             echo "Aucun port a l'ecoute trouve pour le PID $pid."
-            cat "$log"
             exit 1
           fi
           echo "Serveur sur le port $port"
@@ -109,3 +126,25 @@ jobs:
 
           kill "$pid"
           echo "OK : build macOS fonctionnel."
+
+      - name: Publier le diagnostic si echec
+        if: failure()
+        run: |
+          {
+            echo "=== ps aux ==="
+            ps aux | grep -i incipit || true
+            echo "=== stdout/stderr ==="
+            cat /tmp/stdout.log 2>/dev/null || echo "(absent)"
+            echo "=== app.log ==="
+            find dist/Incipit.app -name app.log -exec cat {} \; 2>/dev/null || echo "(absent)"
+          } > /tmp/diag.txt
+          mkdir -p /tmp/repo-diag && cd /tmp/repo-diag
+          git init -q
+          git config user.email ci@local
+          git config user.name bot
+          cp /tmp/diag.txt diag.txt
+          git add -A
+          git commit -q -m "diag macos"
+          git push --force "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git" HEAD:ci-debug-macos
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
