@@ -1,0 +1,103 @@
+name: Smoke test build (temporaire)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  linux:
+    name: Build + lancer sur Linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Dependances runtime pour Qt headless
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xvfb libxcb-cursor0 libxkbcommon-x11-0 libgl1
+
+      - name: Build (packaging/build_linux.sh)
+        run: sh packaging/build_linux.sh
+
+      - name: Lancer et verifier
+        run: |
+          set -e
+          xvfb-run -a dist/Incipit/Incipit &
+          pid=$!
+          sleep 8
+
+          if ! kill -0 "$pid" 2>/dev/null; then
+            echo "Le processus s'est arrete avant la fin du delai."
+            cat dist/Incipit/_internal/logs/app.log || true
+            exit 1
+          fi
+
+          log="dist/Incipit/_internal/logs/app.log"
+          if grep -qi "traceback" "$log"; then
+            echo "Traceback trouve dans les logs :"
+            cat "$log"
+            exit 1
+          fi
+
+          port=$(ss -tlnp 2>/dev/null | grep "pid=$pid," | grep -oE '127\.0\.0\.1:[0-9]+' | head -1 | cut -d: -f2)
+          if [ -z "$port" ]; then
+            echo "Aucun port a l'ecoute trouve pour le PID $pid."
+            cat "$log"
+            exit 1
+          fi
+          echo "Serveur sur le port $port"
+
+          curl -sf "http://127.0.0.1:$port/" | grep -q 'id="btn-supports"' \
+            || { echo "btn-supports absent du HTML servi"; exit 1; }
+          curl -sf "http://127.0.0.1:$port/api/matieres" > /dev/null \
+            || { echo "/api/matieres a echoue"; exit 1; }
+
+          kill "$pid"
+          echo "OK : build Linux fonctionnel."
+
+  macos:
+    name: Build + lancer sur macOS
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Build (packaging/build_macos.sh)
+        run: sh packaging/build_macos.sh
+
+      - name: Lancer et verifier
+        run: |
+          set -e
+          open dist/Incipit.app
+          sleep 8
+
+          pid=$(pgrep -f "dist/Incipit.app/Contents/MacOS/Incipit" | head -1)
+          log=$(find dist/Incipit.app -name app.log | head -1)
+
+          if [ -z "$pid" ]; then
+            echo "Le processus n'a pas demarre ou s'est arrete."
+            cat "$log" || true
+            exit 1
+          fi
+
+          if grep -qi "traceback" "$log"; then
+            echo "Traceback trouve dans les logs :"
+            cat "$log"
+            exit 1
+          fi
+
+          port=$(lsof -a -p "$pid" -iTCP -sTCP:LISTEN -Fn 2>/dev/null | grep -oE '127\.0\.0\.1:[0-9]+' | head -1 | cut -d: -f2)
+          if [ -z "$port" ]; then
+            echo "Aucun port a l'ecoute trouve pour le PID $pid."
+            cat "$log"
+            exit 1
+          fi
+          echo "Serveur sur le port $port"
+
+          curl -sf "http://127.0.0.1:$port/" | grep -q 'id="btn-supports"' \
+            || { echo "btn-supports absent du HTML servi"; exit 1; }
+          curl -sf "http://127.0.0.1:$port/api/matieres" > /dev/null \
+            || { echo "/api/matieres a echoue"; exit 1; }
+
+          kill "$pid"
+          echo "OK : build macOS fonctionnel."
