@@ -70,6 +70,7 @@ packaging/*.spec
 .vscode/
 .idea/
 *.code-workspace
+.serena/
 
 # ============================================================================
 #  Systeme

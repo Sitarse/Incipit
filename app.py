@@ -1,7 +1,7 @@
 # /// script
 # dependencies = [
 #   "flask",
-#   "pywebview",
+#   "pywebview[qt]",
 # ]
 # ///
 """Incipit : point d'entree de l'application.
