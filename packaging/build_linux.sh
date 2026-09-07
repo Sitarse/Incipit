@@ -18,9 +18,16 @@ if [ ! -f "$uv_bundle" ]; then
     chmod +x "$uv_bundle"
 fi
 
-uv run --with pyinstaller --with flask --with pywebview pyinstaller app.py \
+# pywebview[qt] : PyQt6 s'installe via pip partout, contrairement au binding
+# GTK (`gi`) qui reclame des paquets systeme absents de l'environnement isole
+# de `uv run --with`. --exclude-module pkg_resources : Werkzeug importe
+# pkg_resources dans une fonction morte (testapp.py, jamais appelee ici),
+# PyInstaller le detecte quand meme et embarque un pkg_resources casse (jaraco
+# manquant) qui plante le lancement.
+uv run --with pyinstaller --with flask --with "pywebview[qt]" pyinstaller app.py \
     --name Incipit --onedir --windowed --noconfirm \
     --distpath dist --workpath build/linux --specpath packaging \
+    --exclude-module pkg_resources \
     --add-data "$racine/frontend:frontend" \
     --add-data "$racine/generator.py:." \
     --add-data "$racine/md2pdf.py:." \

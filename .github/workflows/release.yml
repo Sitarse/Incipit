@@ -36,6 +36,7 @@ jobs:
             --name Incipit --onedir --windowed --noconfirm `
             --icon "${{ github.workspace }}\frontend\logo.ico" `
             --distpath dist --workpath build\windows --specpath packaging `
+            --exclude-module pkg_resources `
             --add-data "${{ github.workspace }}\frontend;frontend" `
             --add-data "${{ github.workspace }}\generator.py;." `
             --add-data "${{ github.workspace }}\md2pdf.py;." `
@@ -79,9 +80,10 @@ jobs:
 
       - name: Build Linux executable
         run: |
-          uv run --with pyinstaller --with flask --with pywebview pyinstaller app.py \
+          uv run --with pyinstaller --with flask --with "pywebview[qt]" pyinstaller app.py \
             --name Incipit --onedir --windowed --noconfirm \
             --distpath dist --workpath build/linux --specpath packaging \
+            --exclude-module pkg_resources \
             --add-data "${{ github.workspace }}/frontend:frontend" \
             --add-data "${{ github.workspace }}/generator.py:." \
             --add-data "${{ github.workspace }}/md2pdf.py:." \
@@ -155,6 +157,7 @@ jobs:
             --name Incipit --onedir --windowed --noconfirm \
             --icon "${{ github.workspace }}/packaging/vendor/macos/logo.icns" \
             --distpath dist --workpath build/macos --specpath packaging \
+            --exclude-module pkg_resources \
             --add-data "${{ github.workspace }}/frontend:frontend" \
             --add-data "${{ github.workspace }}/generator.py:." \
             --add-data "${{ github.workspace }}/md2pdf.py:." \
@@ -194,8 +197,8 @@ jobs:
             artifacts/Incipit-macos.zip
           generate_release_notes: false
           body: |
-            ## Incipit v1.0.0
-            
+            ## Incipit ${{ github.ref_name }}
+
             Three standalone executables — Windows, Linux, macOS. Download your platform's archive, extract, and run. No installation needed.
             
             ### What's inside

@@ -17,10 +17,15 @@ if (-not (Test-Path $uvBundle)) {
     Expand-Archive "packaging\vendor\windows\uv.zip" "packaging\vendor\windows" -Force
 }
 
+# --exclude-module pkg_resources : Werkzeug importe pkg_resources dans une
+# fonction morte (testapp.py, jamais appelee ici), PyInstaller le detecte quand
+# meme et embarque un pkg_resources casse (jaraco manquant) qui plante le
+# lancement.
 uv run --with pyinstaller --with flask --with pywebview pyinstaller app.py `
     --name Incipit --onedir --windowed --noconfirm `
     --icon "$racine\frontend\logo.ico" `
     --distpath dist --workpath build\windows --specpath packaging `
+    --exclude-module pkg_resources `
     --add-data "$racine\frontend;frontend" `
     --add-data "$racine\generator.py;." `
     --add-data "$racine\md2pdf.py;." `

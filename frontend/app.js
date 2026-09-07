@@ -736,6 +736,13 @@ async function supports() {
 // -------------------------------------------------------------- demarrage
 
 document.addEventListener('DOMContentLoaded', async () => {
+  // Le HTML de #liste-recents et #table-fichiers est la maquette (donnees
+  // d'exemple, cf. commentaire en tete de fichier) : la vider tout de suite,
+  // avant tout appel reseau, garantit une premiere installation vierge meme
+  // si /api/recents ou /api/status echoue plus bas.
+  $('liste-recents').innerHTML = '';
+  $('table-fichiers').innerHTML = '';
+
   const fichierInput = document.createElement('input');
   fichierInput.type = 'file';
   fichierInput.multiple = true;
@@ -998,7 +1005,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  await chargerMatieres();
-  await chargerMoteurs();   // appelle rafraichir() une fois les moteurs connus
-  await chargerRecents();
+  // Chacun independant : sans le try/catch, un echec du premier (reseau,
+  // backend pas encore repondant...) coupait tout l'enchainement et laissait
+  // les listes figees sur la maquette HTML (faux cours recents, faux fichiers)
+  // au lieu de se vider.
+  const tenter = async (fn, nom) => {
+    try { await fn(); } catch (err) { console.error(`${nom} :`, err); }
+  };
+  await tenter(chargerMatieres, 'chargerMatieres');
+  await tenter(chargerMoteurs, 'chargerMoteurs');   // appelle rafraichir() une fois les moteurs connus
+  await tenter(chargerRecents, 'chargerRecents');
 });
