@@ -91,24 +91,15 @@ jobs:
             --add-data "${{ github.workspace }}/config/keys.env.example:config" \
             --add-binary "${{ github.workspace }}/packaging/vendor/linux/uv:."
 
-      - name: Create .desktop file
+      - name: Copy desktop-integration scripts
         run: |
-          cat > dist/Incipit.desktop << EOF
-          [Desktop Entry]
-          Type=Application
-          Name=Incipit
-          Comment=Cours generes a partir de vos photos et PDF
-          Exec=/dist/Incipit/Incipit
-          Icon=frontend/logo.png
-          Terminal=false
-          Categories=Education;
-          EOF
-          chmod +x dist/Incipit.desktop
+          cp packaging/install_linux.sh packaging/uninstall_linux.sh dist/
+          chmod +x dist/install_linux.sh dist/uninstall_linux.sh
 
       - name: Zip Linux artifact
         run: |
           cd dist
-          tar -czf Incipit-linux.tar.gz Incipit Incipit.desktop
+          tar -czf Incipit-linux.tar.gz Incipit install_linux.sh uninstall_linux.sh
 
       - name: Upload Linux artifact
         uses: actions/upload-artifact@v4
@@ -200,10 +191,10 @@ jobs:
             ## Incipit ${{ github.ref_name }}
 
             Three standalone executables — Windows, Linux, macOS. Download your platform's archive, extract, and run. No installation needed.
-            
+
             ### What's inside
             - **Incipit-windows.zip** → folder with `Incipit.exe` + `uv.exe`
-            - **Incipit-linux.tar.gz** → `Incipit` binary + `Incipit.desktop`
+            - **Incipit-linux.tar.gz** → `Incipit/` folder + `install_linux.sh` (adds Incipit to your application menu — run once with `sh install_linux.sh`; `uninstall_linux.sh` removes it again). Without it you can still launch directly via `Incipit/Incipit`.
             - **Incipit-macos.zip** → `Incipit.app` bundle
             
             ### Requirements
