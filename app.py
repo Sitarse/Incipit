@@ -110,13 +110,33 @@ def get_sources(matiere_var, type_var, titre_var):
     return get_dossier(matiere_var, type_var, titre_var) / "sources"
 
 def get_sortie(matiere_var, type_var, titre_var):
-    """La note .md produite, dans la destination choisie (accents gardes :
-    c'est ce que l'utilisateur lit dans Obsidian)."""
-    return engine.destination_courante() / get_matiere(matiere_var) / f"{get_type(type_var)} - {get_titre(titre_var)}.md"
+    """La note .md produite, dans son propre dossier au sein de la matiere
+    (accents gardes : c'est ce que l'utilisateur lit dans Obsidian).
 
-def get_dossier_img(matiere_var, titre_var):
-    """Les photos recopiees a cote du cours, pour qu'Obsidian les affiche."""
-    return engine.destination_courante() / get_matiere(matiere_var) / "_img" / slug(get_titre(titre_var))
+    Un cours n'est jamais un seul fichier : il traine son PDF, sa fiche et le
+    PDF de celle-ci, le lanceur de son TP, ses images. A plat, une matiere de
+    dix cours devenait un tas de cinquante fichiers -- d'ou un dossier par
+    cours, a son nom.
+
+    Les cours ecrits avant ce rangement restent lus la ou ils sont : sinon
+    l'application ne les retrouvait plus et en aurait fabrique un doublon a
+    cote.
+    """
+    dossier = engine.destination_courante() / get_matiere(matiere_var)
+    nom = f"{get_type(type_var)} - {get_titre(titre_var)}"
+    a_plat = dossier / f"{nom}.md"
+    return a_plat if a_plat.is_file() else dossier / nom / f"{nom}.md"
+
+def get_dossier_img(matiere_var, type_var, titre_var):
+    """Les photos recopiees a cote du cours, pour qu'Obsidian les affiche.
+
+    Meme formule que generator.py pour les images de diapos : dans le dossier
+    du cours, quel qu'il soit. Un cours reste a plat garde donc son ancien
+    emplacement, ou les images de toute la matiere cohabitent -- c'est ce
+    sous-dossier par titre qui les y empeche de s'ecraser.
+    """
+    return (get_sortie(matiere_var, type_var, titre_var).parent
+            / "_img" / slug(get_titre(titre_var)))
 
 
 # --------------------------------------------------------- progression (SSE)
@@ -229,7 +249,7 @@ def _copier_images(sources_path, dossier_img, sortie_path):
         liens.append((dossier_img / f.name).relative_to(base).as_posix())
     return liens
 
-def _pipeline(uv, sources_path, sortie_path, dossier_img, matiere, type_, titre, moteur_choisi):
+def _pipeline(uv, sources_path, sortie_path, dossier_img, matiere, type_, titre, moteur_choisi, langue="fr"):
     """La generation complete, de bout en bout. Tourne dans un thread.
 
     Copie des photos -> generator.py en sous-processus -> md2pdf.py. Chaque ligne
@@ -252,7 +272,7 @@ def _pipeline(uv, sources_path, sortie_path, dossier_img, matiere, type_, titre,
         if images:
             journal(f"{len(images)} photo(s) copiee(s) a cote du cours.")
             
-        cmd = engine.commande_generer(uv, sources_path, sortie_path, matiere, type_, titre, images, moteur_choisi, None)
+        cmd = engine.commande_generer(uv, sources_path, sortie_path, matiere, type_, titre, images, moteur_choisi, None, langue)
         proc = subprocess.Popen(
             cmd, cwd=engine.ICI, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             text=True, encoding="utf-8", errors="replace", bufsize=1,
@@ -300,6 +320,7 @@ def api_generer():
     type_ = data.get("type", "CM")
     titre = data.get("titre", "")
     moteur_choisi = data.get("moteur", DEFAUT)
+    langue = data.get("langue", "fr")
     
     uv = trouver_uv()
     if not uv:
@@ -310,17 +331,165 @@ def api_generer():
         
     sources_path = get_sources(matiere, type_, titre)
     sortie_path = get_sortie(matiere, type_, titre)
-    dossier_img = get_dossier_img(matiere, titre)
+    dossier_img = get_dossier_img(matiere, type_, titre)
     
     threading.Thread(target=_pipeline,
                      args=(uv, sources_path, sortie_path, dossier_img,
                            get_matiere(matiere), get_type(type_),
-                           get_titre(titre), moteur_choisi),
+                           get_titre(titre), moteur_choisi, langue),
                      daemon=True).start()
     return jsonify({"ok": True})
 
-def _supports(sortie_path, moteur_choisi):
-    """TP, fiche et flashcards a partir d'un cours deja ecrit. Tourne dans un thread.
+
+@app.route("/api/generer-complet", methods=["POST"])
+def api_generer_complet():
+    """Lance une generation complete avec options choisies (cours, TP, fiche).
+
+    Options :
+    - generer_cours : bool, generer le cours principal
+    - generer_tp : bool, generer le TP interactif
+    - generer_fiche : bool, generer la fiche de revision
+    - niveau : str, niveau pour TP/fiche (defaut: "comme le cours")
+    - tp_focus : str, sur quoi porte le TP (defaut: vide = tout le cours)
+    - tp_questions : int, nombre d'exercices du TP (defaut: 0 = 5, progressifs)
+
+    Si generer_cours=false mais qu'on veut TP/fiche, le cours doit exister.
+    """
+    data = request.json
+    matiere = data.get("matiere", "")
+    type_ = data.get("type", "CM")
+    titre = data.get("titre", "")
+    moteur_choisi = data.get("moteur", DEFAUT)
+    langue = data.get("langue", "fr")
+    
+    generer_cours = data.get("generer_cours", True)
+    generer_tp = data.get("generer_tp", False)
+    generer_fiche = data.get("generer_fiche", False)
+    niveau = data.get("niveau") or "comme le cours"
+    tp_focus = (data.get("tp_focus") or "").strip()
+    # Un champ vide, du texte, un nombre absurde : tout ce qui n'est pas un
+    # entier plausible retombe sur le defaut d'exercices.py (5, progressifs).
+    try:
+        tp_questions = max(0, min(50, int(data.get("tp_questions") or 0)))
+    except (TypeError, ValueError):
+        tp_questions = 0
+
+    # Au moins une option doit être cochée
+    if not any([generer_cours, generer_tp, generer_fiche]):
+        return jsonify({"erreur": "Choisis au moins une option à générer."}), 400
+    
+    # Si on ne génère pas le cours mais qu'on veut les supports, vérifier que le cours existe
+    if not generer_cours and any([generer_tp, generer_fiche]):
+        sortie_path = get_sortie(matiere, type_, titre)
+        if not sortie_path.is_file():
+            return jsonify({"erreur": "Le cours n'existe pas encore. Coche 'Cours' pour le générer d'abord."}), 400
+    
+    uv = trouver_uv()
+    if not uv:
+        return jsonify({"erreur": "`uv` est introuvable."}), 400
+        
+    if souci := engine.moteur_pret(moteur_choisi):
+        return jsonify({"erreur": souci}), 400
+    
+    sources_path = get_sources(matiere, type_, titre)
+    sortie_path = get_sortie(matiere, type_, titre)
+    dossier_img = get_dossier_img(matiere, type_, titre)
+    
+    options = {
+        "generer_cours": generer_cours,
+        "generer_tp": generer_tp,
+        "generer_fiche": generer_fiche,
+        "niveau": niveau,
+        "tp_focus": tp_focus,
+        "tp_questions": tp_questions,
+    }
+    
+    threading.Thread(target=_pipeline_complet,
+                     args=(uv, sources_path, sortie_path, dossier_img,
+                           get_matiere(matiere), get_type(type_),
+                           get_titre(titre), moteur_choisi, langue, options),
+                     daemon=True).start()
+    return jsonify({"ok": True})
+
+
+def _pipeline_complet(uv, sources_path, sortie_path, dossier_img, matiere, type_, titre, moteur_choisi, langue, options):
+    """Pipeline complet : cours + supports selon options. Tourne dans un thread."""
+    def journal(t):
+        notify_clients(sse_event("log", {"texte": t}))
+        notify_clients(sse_event("detail", {"texte": t}))
+    
+    try:
+        # Phase 1 : Générer le cours si demandé
+        if options["generer_cours"]:
+            notify_clients(sse_event("phase", {"texte": "Préparation du cours", "pct": 3}))
+            sortie_path.parent.mkdir(parents=True, exist_ok=True)
+            engine.assurer_vault(engine.destination_courante())
+            
+            images = _copier_images(sources_path, dossier_img, sortie_path)
+            if images:
+                journal(f"{len(images)} photo(s) copiée(s) à côté du cours.")
+            
+            cmd = engine.commande_generer(uv, sources_path, sortie_path, matiere, type_, titre, images, moteur_choisi, None, langue)
+            proc = subprocess.Popen(
+                cmd, cwd=engine.ICI, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                text=True, encoding="utf-8", errors="replace", bufsize=1,
+                creationflags=engine.SANS_FENETRE
+            )
+            
+            for ligne in proc.stdout:
+                if ligne.strip():
+                    logger.info(ligne.rstrip())
+                for genre, charge in engine.analyser(ligne):
+                    if genre == "phase":
+                        texte, pct = charge
+                        notify_clients(sse_event("phase", {"texte": texte, "pct": pct}))
+                    elif genre == "log":
+                        notify_clients(sse_event("log", {"texte": charge, "tag": "doux"}))
+                    elif genre == "detail":
+                        notify_clients(sse_event("detail", {"texte": charge}))
+                        
+            code = proc.wait()
+            if code != 0:
+                notify_clients(sse_event("erreur", {"message": f"La génération du cours a échoué (code {code})."}))
+                return
+                
+            if not sortie_path.is_file():
+                notify_clients(sse_event("erreur", {"message": "Aucun cours n'a été écrit."}))
+                return
+            
+            notify_clients(sse_event("phase", {"texte": "Mise en page du PDF", "pct": 96}))
+            pdf = engine.faire_pdf(sortie_path, journal)
+
+        # Phase 2 : Générer les supports si demandés
+        fichiers = None
+        if any([options["generer_tp"], options["generer_fiche"]]):
+            notify_clients(sse_event("phase", {"texte": "Génération des supports", "pct": 10}))
+            faits = engine.faire_supports_complets(sortie_path, journal, niveau=options["niveau"],
+                                                    moteur=moteur_choisi, langue=langue,
+                                                    faire_tp=options["generer_tp"],
+                                                    faire_fiche=options["generer_fiche"],
+                                                    focus=options.get("tp_focus", ""),
+                                                    questions=options.get("tp_questions", 0))
+            if not faits:
+                notify_clients(sse_event("erreur", {"message": "Aucun support n'a été écrit."}))
+                return
+            fichiers = [str(p) for p in faits]
+
+        # Un seul evenement final, tout a la fin : le frontend ferme le flux SSE
+        # des qu'il le recoit. Un "fini" envoye apres le cours coupait la ligne
+        # avant que les supports, generes ensuite, aient pu s'annoncer.
+        notify_clients(sse_event("phase", {"texte": "Terminé", "pct": 100}))
+        notify_clients(sse_event("fini" if options["generer_cours"] else "supports",
+                                 {"pdf": str(pdf) if options["generer_cours"] and pdf
+                                  else None, "fichiers": fichiers}))
+
+    except Exception as e:
+        logger.exception("Echec de la generation complete")
+        notify_clients(sse_event("erreur", {"message": f"{type(e).__name__} : {e}"}))
+
+
+def _supports(sortie_path, moteur_choisi, niveau, langue="fr"):
+    """TP et fiche a partir d'un cours deja ecrit. Tourne dans un thread.
 
     Meme flux SSE que la generation : l'interface n'a qu'une barre, autant s'en
     servir. L'evenement final est "supports" et non "fini", parce que "fini"
@@ -332,7 +501,8 @@ def _supports(sortie_path, moteur_choisi):
 
     try:
         notify_clients(sse_event("phase", {"texte": "Exercices et fiches", "pct": 10}))
-        faits = engine.faire_supports(sortie_path, journal, moteur=moteur_choisi)
+        faits = engine.faire_supports(sortie_path, journal, niveau=niveau,
+                                      moteur=moteur_choisi, langue=langue)
         if not faits:
             notify_clients(sse_event("erreur",
                                      {"message": "Aucun support n'a ete ecrit."}))
@@ -356,6 +526,8 @@ def api_exercices():
     type_ = data.get("type", "CM")
     titre = data.get("titre", "")
     moteur_choisi = data.get("moteur", DEFAUT)
+    niveau = data.get("niveau") or "comme le cours"
+    langue = data.get("langue", "fr")
 
     uv = trouver_uv()
     if not uv:
@@ -369,9 +541,43 @@ def api_exercices():
         return jsonify({"erreur": "Genere d'abord le cours : les exercices se "
                                   "fabriquent a partir de lui."}), 400
 
-    threading.Thread(target=_supports, args=(sortie_path, moteur_choisi),
+    threading.Thread(target=_supports, args=(sortie_path, moteur_choisi, niveau, langue),
                      daemon=True).start()
     return jsonify({"ok": True})
+
+def _chemin_exercices(matiere, type_, titre):
+    return engine.chemin_tp(get_sortie(matiere, type_, titre), "_exercices.json")
+
+@app.route("/api/exercices_data")
+def api_exercices_data():
+    """Les exercices deja fabriques pour ce cours, pour les prendre dans
+    l'interface (correction live du code, du calcul et du qualitatif)."""
+    chemin = _chemin_exercices(request.args.get("matiere", ""),
+                               request.args.get("type", "CM"),
+                               request.args.get("titre", ""))
+    if not chemin.is_file():
+        return jsonify({"erreur": "Aucun exercice genere pour ce cours."}), 404
+    return jsonify(json.loads(chemin.read_text(encoding="utf-8")))
+
+@app.route("/api/exercices_code", methods=["POST"])
+def api_exercices_code():
+    """Corrige un exercice de type "code" : fait tourner le code envoye
+    contre ses tests, isole dans un sous-processus (cf. engine.corriger_code).
+    """
+    data = request.json
+    chemin = _chemin_exercices(data.get("matiere", ""), data.get("type", "CM"),
+                               data.get("titre", ""))
+    if not chemin.is_file():
+        return jsonify({"erreur": "Aucun exercice genere pour ce cours."}), 404
+    exercices = json.loads(chemin.read_text(encoding="utf-8"))
+    index = data.get("index")
+    if not isinstance(index, int) or not (0 <= index < len(exercices)):
+        return jsonify({"erreur": "Exercice introuvable."}), 400
+    exo = exercices[index]
+    if exo.get("type") != "code":
+        return jsonify({"erreur": "Cet exercice n'est pas de type code."}), 400
+    resultat = engine.corriger_code(data.get("code", ""), exo.get("tests", []))
+    return jsonify(resultat)
 
 @app.route("/api/progression")
 def api_progression():
@@ -469,6 +675,33 @@ def api_moteurs():
     })
 
 
+@app.route("/api/langues")
+def api_langues():
+    """Retourne la liste des langues supportées et la langue détectée du système."""
+    return jsonify({
+        "langues": engine.LANGUES_APP,
+        "systeme": engine.langue_systeme(),
+    })
+
+
+@app.route("/api/messages_masques")
+def api_messages_masques():
+    """Les messages 'ne plus afficher' coches lors d'un lancement precedent,
+    relus par le front au demarrage."""
+    return jsonify(engine.messages_masques())
+
+
+@app.route("/api/messages_masques", methods=["POST"])
+def api_messages_masques_set():
+    """Masque ou reaffiche un message ('confidentialite', 'tutoriel', ...)."""
+    data = request.json or {}
+    cle = data.get("cle")
+    if not cle:
+        return jsonify({"erreur": "Cle manquante."}), 400
+    engine.masquer_message(cle, bool(data.get("masque", True)))
+    return jsonify({"ok": True})
+
+
 @app.route("/api/modele", methods=["POST"])
 def api_modele():
     """Garde le modele choisi, chez le fournisseur a qui il appartient."""
@@ -518,6 +751,40 @@ def api_catalogue():
         return jsonify({"modeles": engine.catalogue_nim()})
     except (RuntimeError, OSError) as e:
         return jsonify({"erreur": str(e)}), 400
+
+
+# ------------------------------------------------------------ Piston (sandbox)
+
+@app.route("/api/piston/status")
+def api_piston_status():
+    """Etat de l'API Piston : pret ou raison de l'indisponibilite."""
+    souci = engine.piston_pret()
+    return jsonify({
+        "pret": souci is None,
+        "souci": souci,
+        "url": engine.piston_url(),
+    })
+
+
+@app.route("/api/piston/runtimes")
+def api_piston_runtimes():
+    """Langages supportes par l'instance Piston."""
+    runtimes = engine.piston_runtimes()
+    return jsonify({"runtimes": runtimes})
+
+
+@app.route("/api/piston/url", methods=["POST"])
+def api_piston_url():
+    """Change l'URL de l'API Piston (persiste dans keys.env)."""
+    data = request.json or {}
+    url = data.get("url", "").strip()
+    if not url:
+        return jsonify({"erreur": "URL requise."}), 400
+    # Validation basique : doit commencer par http:// ou https://
+    if not (url.startswith("http://") or url.startswith("https://")):
+        return jsonify({"erreur": "URL invalide (doit commencer par http:// ou https://)."}), 400
+    engine.ecrire_reglage(engine.CLE_ENV, engine.CLE_PISTON_URL, url)
+    return jsonify({"ok": True, "url": url})
 
 
 @app.route("/api/ouvrir_logs", methods=["POST"])
@@ -670,13 +937,40 @@ def main() -> None:
     # les 1032px utiles d'un ecran 1080p barre des taches comprise.
     webview.create_window('Incipit', url, width=1180, height=1040,
                           min_size=(900, 620), background_color="#1e1e1e")
-    # private_mode=True par defaut : le profil webview serait jete a la
-    # fermeture et le localStorage (cases "ne plus afficher") oublie a
-    # chaque relance. storage_path le rend persistant, sous logs/ qui est
-    # deja hors-suivi git et cree par configurer_logs().
+    # private_mode=True par defaut : le profil webview (cookies, cache) serait
+    # jete a chaque fermeture. storage_path le rend persistant, sous logs/ qui
+    # est deja hors-suivi git et cree par configurer_logs().
     webview.start(icon=str(engine.ICI / "frontend" / "logo.ico"),
                  private_mode=False, storage_path=str(DOSSIER_LOGS / "webview"))
 
 
+def _self_test() -> None:
+    """Ou atterrit un cours. Le seul calcul de app.py qui merite un controle :
+    un cours retrouve ailleurs qu'a sa creation est un cours perdu."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        engine.destination_courante = lambda: Path(tmp)
+        matiere = Path(tmp) / "Génie Logiciel M1"
+
+        # Cours neuf : son propre dossier, et tout le reste dedans.
+        sortie = get_sortie("Génie Logiciel M1", "cm", "CM1 - Besoins")
+        assert sortie == matiere / "CM - CM1 - Besoins" / "CM - CM1 - Besoins.md", sortie
+        assert get_dossier_img("Génie Logiciel M1", "cm", "CM1 - Besoins") \
+            == sortie.parent / "_img" / "cm1-besoins"
+        assert engine.chemin_tp(sortie, "_exercices.py").parent == sortie.parent / ".tp"
+
+        # Cours ecrit avant le rangement : lu la ou il est, pas de doublon.
+        matiere.mkdir(parents=True)
+        (matiere / "CM - CM1 - Besoins.md").write_text("x", encoding="utf-8")
+        assert get_sortie("Génie Logiciel M1", "cm", "CM1 - Besoins") \
+            == matiere / "CM - CM1 - Besoins.md"
+
+    print("app : self-test OK")
+
+
 if __name__ == "__main__":
-    main()
+    if "--self-test" in sys.argv:
+        _self_test()
+    else:
+        main()

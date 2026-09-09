@@ -21,6 +21,8 @@ credentials*.json
 # ============================================================================
 # Sources deposees dans l'interface + cache de transcription des photos
 workspace/
+# Messages "ne plus afficher" coches par l'utilisateur (etat local, pas du code)
+config/messages_masques.json
 # Cours generes, si quelqu'un pointe la destination dans le projet
 *.pdf
 !docs/**/*.pdf

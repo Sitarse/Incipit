@@ -45,6 +45,17 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date
 from pathlib import Path
 
+# Langues supportées par l'application (code ISO 639-1)
+LANGUES_APP = {
+    "fr": "Français", "en": "English", "es": "Español", "de": "Deutsch",
+    "it": "Italiano", "pt": "Português", "nl": "Nederlands", "pl": "Polski",
+    "ru": "Русский", "zh": "中文", "ja": "日本語", "ko": "한국어",
+    "ar": "العربية", "hi": "हिन्दी", "tr": "Türkçe", "sv": "Svenska",
+    "da": "Dansk", "no": "Norsk", "fi": "Suomi", "cs": "Čeština",
+    "hu": "Magyar", "ro": "Română", "uk": "Українська", "el": "Ελληνικά",
+    "he": "עברית", "th": "ไทย", "vi": "Tiếng Việt", "id": "Bahasa Indonesia",
+}
+
 SKILL = Path.home() / ".claude" / "skills" / "cours" / "SKILL.md"
 URL_NIM = "https://integrate.api.nvidia.com/v1/chat/completions"
 URL_NIM_MODELES = "https://integrate.api.nvidia.com/v1/models"
@@ -132,7 +143,7 @@ MAX_JETONS_PHOTO = 2000
 MAX_JETONS_COURS = 16000
 MAX_JETONS_PARTIE = 4000    # plafond de securite ; la cible reelle est calculee
                             # par section (cf. rediger_par_paquets)
-MOTS_CIBLE_TOTAL = 6000     # plafond : au-dela le cours devient long a lire et
+MOTS_CIBLE_TOTAL = 6500     # plafond : au-dela le cours devient long a lire et
                             # a produire pour un gain de fond marginal
 MOTS_CIBLE_FIN = 700        # part reservee au vocabulaire/recap/auto-test/sources
 JETONS_PAR_MOT = 3          # marge large sur le francais (mesure ~2.4 sur du texte
@@ -445,12 +456,11 @@ def probleme(moteur: str, fichier: Path) -> str | None:
         # au moins un des deux fournisseurs suffit : "gratuit" essaie l'un, puis
         # l'autre, pas besoin des deux cles pour demarrer.
         if all(probleme_fournisseur(code, fichier) for code in ORDRE_GRATUIT):
-            return (f"Aucune cle enregistree (Gemini ou NIM). Colle-en au moins "
-                    f"une dans :\n{fichier}")
+            return "Aucune clé enregistrée (Gemini ou NIM). Ajoute-en une dans les Paramètres."
         return None
     nom = MOTEURS[moteur].cle
     if nom and not cle_api(fichier, nom):
-        return f"Cle {nom} absente. Colle-la dans :\n{fichier}"
+        return f"Clé {nom} absente. Ajoute-la dans les Paramètres."
     if moteur == "claude-cli" and not trouver_claude():
         return ("Le CLI `claude` est introuvable. Installe Claude Code, ou choisis "
                 "un autre moteur.")
@@ -1040,7 +1050,7 @@ def transcrire(moteur: str, modele: str | None, cle: str | None, photos: list[Pa
 
 # -------------------------------------------------------------------- prompt
 
-def consigne_systeme() -> str:
+def consigne_systeme(langue: str = "fr") -> str:
     """La skill `cours` telle quelle : c'est elle, la methode pedagogique.
 
     Elle est prise en sandwich entre la persona -- qui redige, et pour qui --
@@ -1052,8 +1062,22 @@ def consigne_systeme() -> str:
         raise SystemExit(f"Methode introuvable : {SKILL}")
     corps = re.sub(r"^---\n.*?\n---\n", "", SKILL.read_text(encoding="utf-8"),
                    count=1, flags=re.S)
+    
+    # Nom de la langue en français pour le prompt
+    noms_langues = {
+        "fr": "français", "en": "anglais", "es": "espagnol", "de": "allemand",
+        "it": "italien", "pt": "portugais", "nl": "néerlandais", "pl": "polonais",
+        "ru": "russe", "zh": "chinois", "ja": "japonais", "ko": "coréen",
+        "ar": "arabe", "hi": "hindi", "tr": "turc", "sv": "suédois",
+        "da": "danois", "no": "norvégien", "fi": "finnois", "cs": "tchèque",
+        "hu": "hongrois", "ro": "roumain", "uk": "ukrainien", "el": "grec",
+        "he": "hébreu", "th": "thaï", "vi": "vietnamien", "id": "indonésien",
+    }
+    nom_langue = noms_langues.get(langue, "français")
+    
     return (
-        "Tu rediges un cours pour un etudiant, en francais, en Markdown Obsidian.\n\n"
+        f"Tu rediges un cours pour un etudiant, en {nom_langue}, en Markdown Obsidian.\n\n"
+        f"IMPORTANT : Le cours DOIT etre redige ENTIEREMENT en {nom_langue}. Pas un mot dans une autre langue.\n\n"
         + PERSONA + "\n\n"
         "Applique la methode ci-dessous a la lettre.\n\n" + corps + "\n\n"
         + CHARTE + "\n\n"
@@ -1067,12 +1091,13 @@ def consigne_systeme() -> str:
 def demande(matiere: str, type_: str, titre: str,
             transcriptions: list[tuple[str, str]],
             pdfs: list[tuple[str, str]], liens: list[str],
-            autres: list[tuple[str, str]] = ()) -> str:
+            autres: list[tuple[str, str]] = (), langue: str = "fr") -> str:
     morceaux = [
         f"Matiere : {matiere}",
         f"Seance  : {type_} ({TYPES.get(type_, type_)})",
         f"Titre   : {titre}",
         f"Date    : {date.today():%Y-%m-%d}",
+        f"Langue  : {langue}",
         f"Sources : {len(pdfs)} PDF, {len(transcriptions)} photos"
         + (f", {len(autres)} autre(s) fichier(s)" if autres else ""),
     ]
@@ -1559,7 +1584,7 @@ def destination_retenue(defaut: Path, fichier: Path) -> Path:
 
 def fabriquer(sources: Path, sortie: Path, matiere: str, type_: str, titre: str,
               liens: list[str], cle_env: Path, moteur: str,
-              modele: str | None = None) -> None:
+              modele: str | None = None, langue: str = "fr") -> None:
     if souci := probleme(moteur, cle_env):
         raise SystemExit(souci)
     cle = cle_du_moteur(moteur, cle_env)
@@ -1613,17 +1638,17 @@ def fabriquer(sources: Path, sortie: Path, matiere: str, type_: str, titre: str,
         dire(f"Redaction du cours  ({mots} mots)",
              REDACTION_DEBUT + round((REDACTION_FIN - REDACTION_DEBUT) * part))
 
-    base = demande(matiere, type_, titre, transcriptions, textes_pdf, liens, textes_autres)
+    base = demande(matiere, type_, titre, transcriptions, textes_pdf, liens, textes_autres, langue)
     if moteur in PAR_PAQUETS:
         # un seul appel fait rationner le modele gratuit : ~325 mots par partie
         # quoi qu'elle merite. Une partie par appel lui rend son budget entier.
         md = rediger_par_paquets(
-            moteur, modele, cle, cle_env, consigne_systeme(), base,
+            moteur, modele, cle, cle_env, consigne_systeme(langue), base,
             matiere, type_, titre,
             [f.name for f in fichiers], len(pdfs), len(photos), len(textes_autres))
     else:
         md = nettoyer(repondre(
-            moteur, modele, cle, consigne_systeme(), base,
+            moteur, modele, cle, consigne_systeme(langue), base,
             cle_env=cle_env, max_jetons=MAX_JETONS_COURS, au_fil=avancer))
     if len(md.split()) < 200:
         raise SystemExit(f"Cours trop court, quelque chose a echoue :\n{md[:400]}")
@@ -1639,8 +1664,9 @@ def fabriquer(sources: Path, sortie: Path, matiere: str, type_: str, titre: str,
 
 def _self_test() -> None:
     assert SKILL.is_file(), f"methode introuvable : {SKILL}"
-    consigne = consigne_systeme()
+    consigne = consigne_systeme("fr")
     assert consigne.lstrip().startswith("Tu rediges")
+    assert "en français" in consigne
     assert "---\nname: cours" not in consigne, "l'en-tete YAML de la skill doit sauter"
     assert "Marquer les ajouts" in consigne, "le corps de la methode doit etre present"
     # la persona ouvre, la charte ferme : la methode est prise entre les deux,
@@ -1650,6 +1676,9 @@ def _self_test() -> None:
     for exige in ("AUCUN JARGON GRATUIT", "kLOC", "> [!tip] À retenir",
                   "> [!note] Complément", f"{VOCAB_MINI} et {VOCAB_MAXI} termes"):
         assert exige in consigne, f"charte incomplete : {exige}"
+
+    consigne_en = consigne_systeme("en")
+    assert "en anglais" in consigne_en
 
     d = demande("Maths", "TD", "Series", [("p1.jpg", "notes")], [("d.pdf", "diapo")],
                 ["Maths/_img/series/p1.jpg"])
@@ -1992,6 +2021,8 @@ def main() -> None:
     p.add_argument("--lien", dest="liens", action="append", default=[])
     p.add_argument("--cle-env", type=Path,
                    default=Path(__file__).resolve().parent / "config" / "keys.env")
+    p.add_argument("--langue", default="fr", choices=list(LANGUES_APP.keys()),
+                   help="Langue du cours généré (code ISO 639-1)")
     p.add_argument("--self-test", action="store_true")
     a = p.parse_args()
 
@@ -2001,7 +2032,7 @@ def main() -> None:
     if not a.sources or not a.sortie:
         p.error("--sources et --sortie sont obligatoires")
     fabriquer(a.sources, a.sortie, a.matiere, a.type_, a.titre, a.liens, a.cle_env,
-              a.moteur, a.modele)
+              a.moteur, a.modele, a.langue)
 
 
 if __name__ == "__main__":

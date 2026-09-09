@@ -211,7 +211,7 @@
 <div class="flex flex-col h-full py-lg">
 <!-- Branding -->
 <div class="px-md mb-lg flex items-center gap-3">
-<img src="logo.png" alt="Logo" class="w-10 h-10 rounded-lg object-cover" />
+<img src="logo.png" alt="Logo" class="w-12 h-12 rounded-lg object-cover" />
 <div>
 <h1 class="font-title-sm text-title-sm font-bold text-on-surface dark:text-on-surface truncate">Incipit</h1>
 <p class="font-label-sm text-label-sm text-on-surface-variant">v1.0.1</p>
@@ -223,13 +223,13 @@
 <li>
 <a id="lien-cours" class="flex items-center gap-sm py-sm px-md border-l-2 border-transparent text-on-surface-variant hover:bg-surface-container-highest transition-colors group" href="#">
 <span class="material-symbols-outlined text-[20px]" data-icon="add_circle">add_circle</span>
-<span class="font-body-md text-body-md truncate">Nouveau cours</span>
+<span class="font-body-md text-body-md truncate" data-i18n="nouveau_cours">Nouveau cours</span>
 </a>
 </li>
 <li>
 <a class="flex items-center gap-sm text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container dark:hover:bg-surface-container hover:bg-surface-container-highest dark:hover:bg-surface-container-highest py-sm px-md transition-colors group" href="#" id="lien-destination">
 <span class="material-symbols-outlined text-[20px]" data-icon="folder_open">folder_open</span>
-<span class="font-body-md text-body-md truncate">Dossier de sortie</span>
+<span class="font-body-md text-body-md truncate" data-i18n="dossier_sortie">Dossier de sortie</span>
 </a>
 </li>
 </ul>
@@ -238,18 +238,8 @@
 <h2 class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider">Recent courses</h2>
 </div>
 <ul class="space-y-[1px]" id="liste-recents">
-<li>
-<a class="flex items-center gap-sm text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container dark:hover:bg-surface-container hover:bg-surface-container-highest dark:hover:bg-surface-container-highest py-sm px-md transition-colors group pl-[32px]" href="#">
-<span class="material-symbols-outlined text-[16px] text-outline" data-icon="description">description</span>
-<span class="font-body-md text-body-md truncate text-sm">Génie Logiciel M1 - CM1</span>
-</a>
-</li>
-<li>
-<a class="flex items-center gap-sm text-on-surface-variant dark:text-on-surface-variant hover:bg-surface-container dark:hover:bg-surface-container hover:bg-surface-container-highest dark:hover:bg-surface-container-highest py-sm px-md transition-colors group pl-[32px]" href="#">
-<span class="material-symbols-outlined text-[16px] text-outline" data-icon="description">description</span>
-<span class="font-body-md text-body-md truncate text-sm">Algo Avancée - TD3</span>
-</a>
-</li>
+<!-- Rempli par app.js depuis /api/recents. Vide au depart : de faux cours
+     recents laissaient croire que l'application avait deja servi ici. -->
 </ul>
 </nav>
 <!-- Footer Navigation Group -->
@@ -258,13 +248,13 @@
 <li>
 <a id="link-parametres" class="flex items-center gap-sm py-sm px-md border-l-2 border-transparent text-on-surface-variant hover:bg-surface-container-highest transition-colors group" href="#">
 <span class="material-symbols-outlined text-[20px]" data-icon="settings">settings</span>
-<span class="font-body-md text-body-md truncate">Paramètres</span>
+<span class="font-body-md text-body-md truncate" data-i18n="parametres">Paramètres</span>
 </a>
 </li>
 <li>
 <a id="link-aide" class="flex items-center gap-sm py-sm px-md border-l-2 border-transparent text-on-surface-variant hover:bg-surface-container-highest transition-colors group" href="#">
 <span class="material-symbols-outlined text-[20px]" data-icon="help_outline">help_outline</span>
-<span class="font-body-md text-body-md truncate">Aide</span>
+<span class="font-body-md text-body-md truncate" data-i18n="aide">Aide</span>
 </a>
 </li>
 <li>
@@ -282,8 +272,6 @@
 <select id="lang-select" class="hidden">
 <option value="fr" selected>Français</option>
 <option value="en">English</option>
-<option value="es">Español</option>
-<option value="de">Deutsch</option>
 </select>
 </div>
 </li>
@@ -304,13 +292,13 @@
 <header class="mb-md flex items-start justify-between gap-lg">
 <div>
 <div class="flex items-center gap-xs mb-xs">
-<h2 class="font-display-lg text-display-lg text-on-surface">Nouveau cours</h2>
+<h2 class="font-display-lg text-display-lg text-on-surface" data-i18n="nouveau_cours_titre">Nouveau cours</h2>
 <button type="button" data-aide="generer" title="Aide : générer un cours"
   class="flex items-center justify-center w-5 h-5 rounded-full text-on-surface-variant/70 hover:text-on-surface hover:bg-surface-container-highest transition-colors">
   <span class="material-symbols-outlined text-[16px]" data-icon="help">help</span>
 </button>
 </div>
-<p class="font-body-lg text-body-lg text-on-surface-variant">Générez un cours structuré à partir de vos documents</p>
+<p class="font-body-lg text-body-lg text-on-surface-variant" data-i18n="generer_cours_desc">Générez un cours structuré à partir de vos documents</p>
 </div>
 <!-- Coffre Obsidian : aligne sur le titre, hors du flux de generation -->
 <div class="flex flex-col items-end gap-xs shrink-0">
@@ -318,7 +306,8 @@
     <span id="badge-obsidian"
       class="hidden items-center gap-xs px-sm py-[3px] rounded-full border text-xs font-medium cursor-default shrink-0
              bg-[rgba(124,58,237,0.12)] border-[rgba(124,58,237,0.35)] text-violet-400"
-      title="Obsidian doit être installé pour utiliser cette fonctionnalité">
+      title="Obsidian doit être installé pour utiliser cette fonctionnalité"
+      data-i18n="obsidian_requis">
       ⚠ Obsidian requis
     </span>
     <button id="btn-ouvrir-vault"
@@ -328,7 +317,7 @@
         <polygon points="50,20 75,35 75,65 50,80 25,65 25,35" fill="none" stroke="#a78bfa" stroke-width="1.5" stroke-dasharray="4 2"/>
         <defs><linearGradient id="obsGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#7c3aed" stop-opacity="0.6"/><stop offset="100%" stop-color="#4c1d95" stop-opacity="0.8"/></linearGradient></defs>
       </svg>
-      <span class="font-body-md text-body-md whitespace-nowrap">Ouvrir dans Obsidian</span>
+      <span class="font-body-md text-body-md whitespace-nowrap" data-i18n="ouvrir_dans_obsidian">Ouvrir dans Obsidian</span>
     </button>
     <button type="button" data-aide="obsidian" title="Aide : Obsidian"
       class="flex items-center justify-center w-8 h-8 shrink-0 rounded-lg border border-[#333333] bg-[#252525] text-on-surface-variant hover:text-on-surface hover:bg-[#2d2d2d] transition-colors">
@@ -336,9 +325,10 @@
     </button>
   </div>
   <p id="hint-obsidian" class="hidden font-label-sm text-label-sm text-on-surface-variant text-right">
-    Pas encore installé ?
+    <span data-i18n="pas_encore_installe">Pas encore installé ?</span>
     <a href="https://obsidian.md" target="_blank"
-       class="text-violet-400 hover:text-violet-300 underline underline-offset-2 transition-colors">
+       class="text-violet-400 hover:text-violet-300 underline underline-offset-2 transition-colors"
+       data-i18n="telecharger_obsidian">
       Téléchargez Obsidian sur obsidian.md
     </a>
   </p>
@@ -346,36 +336,35 @@
 </header>
 <!-- Section 1: Informations de la séance -->
 <section class="obsidian-panel rounded-lg p-md">
-<h3 class="font-title-sm text-title-sm text-on-surface mb-sm pb-xs border-b border-[#333333]">Informations de la séance</h3>
+<h3 class="font-title-sm text-title-sm text-on-surface mb-sm pb-xs border-b border-[#333333]" data-i18n="infos_seance">Informations de la séance</h3>
 <div class="grid grid-cols-1 md:grid-cols-2 gap-md">
 <div class="space-y-xs">
-<label class="font-label-sm text-label-sm text-on-surface-variant block" for="subject-select">Matière</label>
+<label class="font-label-sm text-label-sm text-on-surface-variant block" for="subject-select" data-i18n="matiere">Matière</label>
 <select class="w-full h-9 px-sm rounded border border-[#333333] bg-[#1e1e1e] text-on-surface focus:border-primary-container focus:ring-0 transition-colors" id="subject-select">
-<option disabled="" selected="" value="">Sélectionner une matière...</option>
-<option value="informatique">Informatique</option>
-<option value="maths">Mathématiques</option>
-<option value="physique">Physique</option>
+<option disabled="" selected="" value="" data-i18n="selectionner_matiere">Sélectionner une matière...</option>
+<!-- Les vraies matieres viennent de /api/matieres (chargerMatieres) : celles
+     ecrites ici seraient des matieres inventees, sans dossier derriere. -->
 </select>
 </div>
 <div class="space-y-xs">
-<label class="font-label-sm text-label-sm text-on-surface-variant block" for="chapter-title">Titre du chapitre</label>
-<input class="w-full h-9 px-sm rounded border border-[#333333] bg-[#1e1e1e] text-on-surface focus:border-primary-container focus:ring-0 transition-colors placeholder:text-outline" id="chapter-title" placeholder="Ex: Introduction aux pointeurs" type="text"/>
+<label class="font-label-sm text-label-sm text-on-surface-variant block" for="chapter-title" data-i18n="titre_chapitre">Titre du chapitre</label>
+<input class="w-full h-9 px-sm rounded border border-[#333333] bg-[#1e1e1e] text-on-surface focus:border-primary-container focus:ring-0 transition-colors placeholder:text-outline" id="chapter-title" placeholder="Ex: Introduction aux pointeurs" type="text" data-i18n="ex_intro_pointeurs"/>
 </div>
 </div>
 <div class="mt-sm space-y-xs">
-<span class="font-label-sm text-label-sm text-on-surface-variant block">Type de séance</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant block" data-i18n="type_seance">Type de séance</span>
 <div class="flex flex-wrap gap-md">
 <label class="flex items-center gap-xs cursor-pointer group">
 <input checked="" class="w-4 h-4 text-primary-container border-[#4a4455] bg-transparent focus:ring-primary-container focus:ring-offset-[#252525]" name="session_type" type="radio" value="cm"/>
-<span class="font-body-md text-body-md text-on-surface group-hover:text-primary transition-colors">CM (Cours Magistral)</span>
+<span class="font-body-md text-body-md text-on-surface group-hover:text-primary transition-colors" data-i18n="cm_label">CM (Cours Magistral)</span>
 </label>
 <label class="flex items-center gap-xs cursor-pointer group">
 <input class="w-4 h-4 text-primary-container border-[#4a4455] bg-transparent focus:ring-primary-container focus:ring-offset-[#252525]" name="session_type" type="radio" value="td"/>
-<span class="font-body-md text-body-md text-on-surface group-hover:text-primary transition-colors">TD (Travaux Dirigés)</span>
+<span class="font-body-md text-body-md text-on-surface group-hover:text-primary transition-colors" data-i18n="td_label">TD (Travaux Dirigés)</span>
 </label>
 <label class="flex items-center gap-xs cursor-pointer group">
 <input class="w-4 h-4 text-primary-container border-[#4a4455] bg-transparent focus:ring-primary-container focus:ring-offset-[#252525]" name="session_type" type="radio" value="tp"/>
-<span class="font-body-md text-body-md text-on-surface group-hover:text-primary transition-colors">TP (Travaux Pratiques)</span>
+<span class="font-body-md text-body-md text-on-surface group-hover:text-primary transition-colors" data-i18n="tp_label">TP (Travaux Pratiques)</span>
 </label>
 </div>
 </div>
@@ -383,15 +372,15 @@
 <!-- Section 2: Photos et PDF du prof -->
 <section class="obsidian-panel rounded-lg p-md flex flex-col">
 <div class="flex justify-between items-center mb-sm pb-xs border-b border-[#333333]">
-<h3 class="font-title-sm text-title-sm text-on-surface">Photos et PDF du prof</h3>
+<h3 class="font-title-sm text-title-sm text-on-surface" data-i18n="photos_pdfs">Photos et PDF du prof</h3>
 <div class="flex gap-sm">
 <button class="flex items-center gap-xs px-md py-sm bg-transparent border border-[#333333] hover:bg-[#3d3d3d] text-[#e0e0e0] rounded transition-colors font-label-sm text-label-sm" id="btn-ouvrir-dossier" type="button">
 <span class="material-symbols-outlined text-[16px]" data-icon="folder_open">folder_open</span>
-                                Ouvrir le dossier
+                                <span data-i18n="ouvrir_dossier">Ouvrir le dossier</span>
                             </button>
 <button class="flex items-center gap-xs px-md py-sm bg-primary-container hover:brightness-110 text-white rounded transition-all font-label-sm text-label-sm" id="btn-ajouter" type="button">
 <span class="material-symbols-outlined text-[16px]" data-icon="add">add</span>
-                                Ajouter des fichiers
+                                <span data-i18n="ajouter_fichiers">Ajouter des fichiers</span>
                             </button>
 </div>
 </div>
@@ -400,47 +389,50 @@
 <table class="w-full text-left border-collapse">
 <thead>
 <tr class="border-b border-[#333333] bg-[#252525]">
-<th class="py-sm px-md font-label-sm text-label-sm text-on-surface-variant font-medium w-12 text-center">Type</th>
-<th class="py-sm px-md font-label-sm text-label-sm text-on-surface-variant font-medium">Nom du fichier</th>
-<th class="py-sm px-md font-label-sm text-label-sm text-on-surface-variant font-medium w-24">Taille</th>
-<th class="py-sm px-md font-label-sm text-label-sm text-on-surface-variant font-medium w-16 text-center">Action</th>
+<th class="py-sm px-md font-label-sm text-label-sm text-on-surface-variant font-medium w-12 text-center" data-i18n="type_fichier">Type</th>
+<th class="py-sm px-md font-label-sm text-label-sm text-on-surface-variant font-medium" data-i18n="nom_fichier">Nom du fichier</th>
+<th class="py-sm px-md font-label-sm text-label-sm text-on-surface-variant font-medium w-24" data-i18n="taille">Taille</th>
+<th class="py-sm px-md font-label-sm text-label-sm text-on-surface-variant font-medium w-16 text-center" data-i18n="action">Action</th>
 </tr>
 </thead>
 <tbody id="table-fichiers">
-<tr class="border-b border-[#333333] hover:bg-[#252525] transition-colors group">
-<td class="py-sm px-md text-center">
-<span class="material-symbols-outlined text-error text-[20px]" data-icon="picture_as_pdf">picture_as_pdf</span>
-</td>
-<td class="py-sm px-md font-body-md text-body-md text-on-surface truncate">notes_cm1_part1.pdf</td>
-<td class="py-sm px-md font-code text-code text-on-surface-variant">2.4 MB</td>
-<td class="py-sm px-md text-center">
-<button aria-label="Supprimer" class="text-outline-variant hover:text-error transition-colors p-xs rounded hover:bg-surface-container">
-<span class="material-symbols-outlined text-[18px]" data-icon="delete">delete</span>
-</button>
-</td>
-</tr>
-<tr class="hover:bg-[#252525] transition-colors group">
-<td class="py-sm px-md text-center">
-<span class="material-symbols-outlined text-primary text-[20px]" data-icon="image">image</span>
-</td>
-<td class="py-sm px-md font-body-md text-body-md text-on-surface truncate">tableau_algo_schema.jpg</td>
-<td class="py-sm px-md font-code text-code text-on-surface-variant">845 KB</td>
-<td class="py-sm px-md text-center">
-<button aria-label="Supprimer" class="text-outline-variant hover:text-error transition-colors p-xs rounded hover:bg-surface-container">
-<span class="material-symbols-outlined text-[18px]" data-icon="delete">delete</span>
-</button>
-</td>
-</tr>
+<!-- Rempli par app.js depuis /api/status. Vide au depart : un faux fichier
+     affiche avant la reponse ferait croire a un document deja ajoute. -->
 </tbody>
 </table>
 <!-- Empty State Example (Hidden in this view, but good for structure) -->
 <!-- 
                         <div class="py-xl flex flex-col items-center justify-center text-on-surface-variant opacity-50">
                             <span class="material-symbols-outlined text-[48px] mb-sm" data-icon="upload_file">upload_file</span>
-                            <p class="font-body-md text-body-md">Aucun fichier ajouté.</p>
+                            <p class="font-body-md text-body-md" data-i18n="aucun_fichier">Aucun fichier ajouté.</p>
                         </div> 
                         -->
 </div>
+</section>
+<!-- Section 2.5: Options de génération (entre Photos/PDF et Moteur IA) -->
+<section class="obsidian-panel rounded-lg p-md flex flex-col" id="generer-options-section">
+  <div class="flex items-center justify-between gap-md mb-sm pb-xs border-b border-[#333333]">
+    <h3 class="font-title-sm text-title-sm text-on-surface" data-i18n="generer_options">Ce qu'on génère</h3>
+  </div>
+  <div class="space-y-sm" id="generer-checkboxes">
+    <!-- Rempli dynamiquement par app.js -->
+  </div>
+  <!-- Niveau pour les exercices (seulement affiché si TP/Fiche cochés) -->
+  <div class="space-y-xs hidden" id="generer-niveau-wrapper">
+    <label class="font-label-sm text-label-sm text-on-surface-variant" for="generer-niveau" data-i18n="niveau_exercices">Niveau des exercices (TP, fiche)</label>
+    <input type="text" id="generer-niveau" placeholder="comme le cours — ex. débutant, licence 2, agrégation…"
+      class="w-full h-9 px-sm rounded border border-[#333333] bg-[#1e1e1e] text-on-surface placeholder:text-on-surface-variant focus:border-primary-container focus:ring-0" autocomplete="off" data-i18n="placeholder_niveau"/>
+  </div>
+  <!-- Cadrage du TP : les deux champs sont facultatifs. Vides, le TP porte sur
+       tout le cours en 5 exercices de plus en plus durs. -->
+  <div class="space-y-xs hidden" id="generer-tp-options">
+    <label class="font-label-sm text-label-sm text-on-surface-variant" for="tp-focus" data-i18n="tp_focus">Sur quoi porte le TP <span class="text-outline">(facultatif)</span></label>
+    <input type="text" id="tp-focus" placeholder="tout le cours — ex. les diagrammes de séquence"
+      class="w-full h-9 px-sm rounded border border-[#333333] bg-[#1e1e1e] text-on-surface placeholder:text-on-surface-variant focus:border-primary-container focus:ring-0" autocomplete="off" data-i18n="placeholder_focus"/>
+    <label class="font-label-sm text-label-sm text-on-surface-variant block pt-xs" for="tp-questions" data-i18n="nb_questions">Nombre de questions <span class="text-outline">(facultatif)</span></label>
+    <input type="number" id="tp-questions" min="1" max="50" step="1" placeholder="5"
+      class="w-full h-9 px-sm rounded border border-[#333333] bg-[#1e1e1e] text-on-surface placeholder:text-on-surface-variant focus:border-primary-container focus:ring-0" autocomplete="off" data-i18n="placeholder_niveau"/>
+  </div>
 </section>
 <!-- Section 3: Moteur IA -->
 <section class="obsidian-panel rounded-lg p-md flex flex-col">
@@ -451,7 +443,7 @@
        <p class="hidden"> que personne ne voyait jamais. -->
   <div class="flex items-center justify-between gap-md mb-sm pb-xs border-b border-[#333333]">
     <div class="flex items-center gap-xs shrink-0">
-      <h3 class="font-title-sm text-title-sm text-on-surface">Moteur IA</h3>
+      <h3 class="font-title-sm text-title-sm text-on-surface" data-i18n="moteur_ia">Moteur IA</h3>
       <button type="button" data-aide="moteurs" title="Aide : moteurs IA et clés API"
         class="flex items-center justify-center w-5 h-5 rounded-full text-on-surface-variant/70 hover:text-on-surface hover:bg-surface-container-highest transition-colors">
         <span class="material-symbols-outlined text-[16px]" data-icon="help">help</span>
@@ -471,35 +463,35 @@
   <details class="group mt-sm" id="options-avancees">
     <summary class="flex items-center gap-xs cursor-pointer select-none py-xs rounded text-on-surface-variant hover:text-on-surface transition-colors list-none">
       <span class="material-symbols-outlined text-[18px] transition-transform group-open:rotate-90" data-icon="chevron_right">chevron_right</span>
-      <span class="font-label-sm text-label-sm font-medium uppercase tracking-wider">Options avancées &amp; API</span>
+      <span class="font-label-sm text-label-sm font-medium uppercase tracking-wider" data-i18n="options_avancees">Options avancées &amp; API</span>
     </summary>
     <div class="pt-sm space-y-sm">
       <div class="grid grid-cols-2 gap-sm">
         <div class="space-y-xs">
           <div class="flex items-center justify-between gap-xs">
-            <label class="font-label-sm text-label-sm text-on-surface-variant" for="model-select">Modèle de rédaction</label>
+            <label class="font-label-sm text-label-sm text-on-surface-variant" for="model-select" data-i18n="modele_redaction">Modèle de rédaction</label>
             <button class="hidden items-center gap-xs pl-xs pr-sm py-[2px] rounded-full border border-[#333333] bg-[#1e1e1e] hover:border-[#4a4455] font-label-sm text-label-sm text-on-surface-variant transition-colors" id="pastille-modele" type="button"></button>
           </div>
           <select id="model-select" class="w-full h-9 px-sm rounded border border-[#333333] bg-[#1e1e1e] text-on-surface focus:border-primary-container focus:ring-0"></select>
         </div>
         <div class="space-y-xs hidden" id="bloc-transcripteur">
           <div class="flex items-center justify-between gap-xs">
-            <label class="font-label-sm text-label-sm text-on-surface-variant" for="transcripteur-select">Qui lit tes photos ?</label>
+            <label class="font-label-sm text-label-sm text-on-surface-variant" for="transcripteur-select" data-i18n="qui_lit_photos">Qui lit tes photos ?</label>
             <button class="hidden items-center gap-xs pl-xs pr-sm py-[2px] rounded-full border border-[#333333] bg-[#1e1e1e] hover:border-[#4a4455] font-label-sm text-label-sm text-on-surface-variant transition-colors" id="pastille-transcripteur" type="button"></button>
           </div>
           <select id="transcripteur-select" class="w-full h-9 px-sm rounded border border-[#333333] bg-[#1e1e1e] text-on-surface focus:border-primary-container focus:ring-0"></select>
         </div>
       </div>
 
-      <div class="space-y-xs p-sm rounded bg-[#1e1e1e] border border-[#333333] hidden" id="bloc-cle">
+<div class="space-y-xs p-sm rounded bg-[#1e1e1e] border border-[#333333] hidden" id="bloc-cle">
         <div class="flex items-center gap-sm">
           <label class="font-label-sm text-label-sm text-on-surface-variant shrink-0 w-[130px] truncate" id="cle-titre" for="cle-valeur">Clé API</label>
           <input type="password" id="cle-valeur" class="flex-1 min-w-0 h-9 px-sm rounded border border-[#333333] bg-[#252525] text-on-surface font-code text-code focus:border-primary-container focus:ring-0" autocomplete="off" spellcheck="false"/>
-          <button type="button" id="btn-cle" class="h-9 px-md rounded bg-primary-container hover:brightness-110 text-white font-label-sm text-label-sm transition-all shrink-0">Enregistrer</button>
+          <button type="button" id="btn-cle" class="h-9 px-md rounded bg-primary-container hover:brightness-110 text-white font-label-sm text-label-sm transition-all shrink-0" data-i18n="enregistrer">Enregistrer</button>
         </div>
         <div class="flex items-center justify-between gap-sm pl-[138px]">
           <p class="font-label-sm text-label-sm text-on-surface-variant truncate" id="cle-message"></p>
-          <button type="button" id="btn-catalogue" class="hidden font-label-sm text-label-sm text-primary hover:brightness-125 transition-all shrink-0">Charger la liste</button>
+          <button type="button" id="btn-catalogue" class="hidden font-label-sm text-label-sm text-primary hover:brightness-125 transition-all shrink-0" data-i18n="charger_liste">Charger la liste</button>
         </div>
       </div>
     </div>
@@ -521,24 +513,33 @@
       </div>
     </div>
 
-    <!-- Se fabrique a partir du cours deja ecrit, jamais a la place : le serveur
-         refuse et le dit si le .md n'existe pas encore. -->
-    <button id="btn-supports" type="button"
-      title="TP interactif, fiche de révision et flashcards, à partir du cours généré"
-      class="shrink-0 flex items-center gap-sm h-10 px-md rounded-lg bg-[#333333] text-[#e0e0e0] hover:bg-[#3d3d3d] font-medium text-[14px] transition-colors border border-transparent">
-      <span class="material-symbols-outlined text-[18px] shrink-0" data-icon="fitness_center">fitness_center</span>
-      <span>Exercices</span>
-    </button>
-
-    <button id="btn-generer" type="button"
-      class="btn-primaire group shrink-0 flex items-center gap-sm h-10 px-lg rounded-lg text-white font-medium text-[14px] tracking-[0.01em]">
-      <svg width="13" height="13" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" class="shrink-0 transition-transform duration-200 group-hover:translate-x-[2px]">
-        <path d="M3 2L11 7L3 12V2Z" fill="currentColor"/>
-      </svg>
-      <span>Générer le cours</span>
-      <span class="touche rounded text-[10px] font-mono leading-none px-[5px] py-[2px] ml-xs">Ctrl+G</span>
-    </button>
+    <!-- Boutons "Générer" + "Ouvrir le cours" côte à côte -->
+    <div class="flex items-center gap-sm" id="btn-generer-wrapper">
+      <button id="btn-generer" type="button"
+        class="shrink-0 flex items-center gap-sm h-10 px-lg rounded-lg bg-primary-container hover:brightness-110 text-white font-medium text-[14px] transition-all"
+        title="Génère selon les options cochées ci-dessus">
+        <svg width="18" height="18" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" class="shrink-0">
+          <path d="M3 2L11 7L3 12V2Z" fill="currentColor"/>
+        </svg>
+        <span id="btn-generer-label">Générer</span>
+      </button>
+      <button id="btn-ouvrir-cours" type="button"
+        class="shrink-0 flex items-center gap-sm h-10 px-lg rounded-lg bg-[#333333] text-[#e0e0e0] hover:bg-[#3d3d3d] font-medium text-[14px] transition-colors hidden"
+        title="Ouvre le cours généré (Markdown ou PDF)">
+        <span class="material-symbols-outlined text-[18px] shrink-0" data-icon="open_in_new">open_in_new</span>
+        <span>Ouvrir le cours</span>
+      </button>
+      <!-- Cache tant qu'aucun TP n'existe pour ce cours ; app.js le decouvre
+           quand la generation annonce des exercices. -->
+      <button id="btn-supports" type="button"
+        class="shrink-0 flex items-center gap-sm h-10 px-lg rounded-lg bg-[#333333] text-[#e0e0e0] hover:bg-[#3d3d3d] font-medium text-[14px] transition-colors hidden"
+        title="Ouvre le TP généré pour ce cours">
+        <span class="material-symbols-outlined text-[18px] shrink-0" data-icon="quiz">quiz</span>
+        <span>Faire le TP</span>
+      </button>
+    </div>
   </div>
+</div>
 </div>
 </div>
 </div>
@@ -548,55 +549,55 @@
     <div class="flex items-center gap-md px-lg py-md border-b border-[#333333] shrink-0">
       <button id="btn-fermer-parametres" class="flex items-center gap-xs -ml-sm px-sm py-xs rounded text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors">
         <span class="material-symbols-outlined text-[18px]" data-icon="arrow_back">arrow_back</span>
-        <span class="font-body-md text-body-md">Cours</span>
+        <span class="font-body-md text-body-md" data-i18n="cours">Cours</span>
       </button>
-      <h2 class="font-title-sm text-title-sm text-on-surface" id="modal-title">Paramètres</h2>
+      <h2 class="font-title-sm text-title-sm text-on-surface" id="modal-title" data-i18n="parametres">Paramètres</h2>
     </div>
     <div class="flex flex-1 overflow-hidden">
       <nav class="w-[240px] shrink-0 border-r border-[#333333] bg-[#1e1e1e] py-md flex flex-col gap-xs overflow-y-auto" id="parametres-nav">
         <button data-onglet="onglet-general" class="parametres-onglet flex items-center gap-sm px-md py-sm bg-[#2d2d2d] border-l-[2px] border-primary-container text-on-surface w-full text-left transition-colors font-body-md text-body-md">
           <span class="material-symbols-outlined text-[18px]" data-icon="settings">settings</span>
-          <span>Général</span>
+          <span data-i18n="general">Général</span>
         </button>
         <button data-onglet="onglet-api" class="parametres-onglet flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-[#2d2d2d] border-l-[2px] border-transparent w-full text-left transition-colors font-body-md text-body-md">
           <span class="material-symbols-outlined text-[18px]" data-icon="api">api</span>
-          <span>API &amp; Moteurs</span>
+          <span data-i18n="api_moteurs">API &amp; Moteurs</span>
         </button>
         <button data-onglet="onglet-journal" class="parametres-onglet flex items-center gap-sm px-md py-sm text-on-surface-variant hover:bg-[#2d2d2d] border-l-[2px] border-transparent w-full text-left transition-colors font-body-md text-body-md">
           <span class="material-symbols-outlined text-[18px]" data-icon="description">description</span>
-          <span>Journal</span>
+          <span data-i18n="journal">Journal</span>
         </button>
       </nav>
       <div class="flex-1 overflow-y-auto bg-[#1e1e1e] p-lg">
         <div class="max-w-2xl mx-auto">
           <section id="onglet-general" class="space-y-lg">
-            <h3 class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider border-b border-[#333333] pb-sm">Général</h3>
+            <h3 class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider border-b border-[#333333] pb-sm" data-i18n="general">Général</h3>
             <div class="space-y-md">
               <div class="flex flex-col gap-xs">
-                <label class="font-label-sm text-label-sm text-on-surface" for="settings-output-path">Dossier de sortie</label>
+                <label class="font-label-sm text-label-sm text-on-surface" for="settings-output-path" data-i18n="dossier_sortie_label">Dossier de sortie</label>
                 <div class="flex items-center gap-sm">
                   <input class="flex-1 bg-[#1e1e1e] border border-[#333333] rounded-lg px-md py-sm text-on-surface focus:outline-none focus:border-primary-container font-code text-code" id="settings-output-path" readonly type="text" value="..."/>
-                  <button id="btn-browse-folder" class="bg-[#333333] text-[#e0e0e0] hover:bg-[#3d3d3d] px-md py-sm rounded-lg font-body-md text-body-md transition-colors border border-transparent whitespace-nowrap">
+                  <button id="btn-browse-folder" class="bg-[#333333] text-[#e0e0e0] hover:bg-[#3d3d3d] px-md py-sm rounded-lg font-body-md text-body-md transition-colors border border-transparent whitespace-nowrap" data-i18n="ouvrir">
                       Ouvrir...
                   </button>
                 </div>
-                <p class="font-label-sm text-label-sm text-on-surface-variant mt-1">L'emplacement où les fichiers générés sont sauvegardés.</p>
+                <p class="font-label-sm text-label-sm text-on-surface-variant mt-1" data-i18n="emplacement_fichiers">L'emplacement où les fichiers générés sont sauvegardés.</p>
               </div>
               <div class="flex flex-col gap-xs pt-sm border-t border-[#333333]">
-                <label class="font-label-sm text-label-sm text-on-surface">Longueur des cours</label>
-                <p class="font-label-sm text-label-sm text-on-surface-variant">Chaque cours vise <strong class="text-on-surface">6 000 mots</strong> au maximum, toutes sections comprises : au-delà, un cours devient long à lire et à corriger pour un gain de fond marginal.</p>
+                <label class="font-label-sm text-label-sm text-on-surface" data-i18n="longueur_cours">Longueur des cours</label>
+                <p class="font-label-sm text-label-sm text-on-surface-variant" data-i18n-html="longueur_desc_html">Chaque cours vise <strong class="text-on-surface">6 500 mots</strong> au maximum, toutes sections comprises : au-delà, un cours devient long à lire et à corriger pour un gain de fond marginal.</p>
               </div>
               <div class="flex flex-col gap-xs pt-sm border-t border-[#333333]">
-                <label class="font-label-sm text-label-sm text-on-surface">Confidentialité</label>
-                <p class="font-label-sm text-label-sm text-on-surface-variant">Réaffiche l'avertissement sur les données envoyées au modèle d'IA, si tu avais coché « Ne plus afficher ce message ».</p>
-                <button id="btn-reafficher-confidentialite" class="bg-[#333333] text-[#e0e0e0] hover:bg-[#3d3d3d] px-md py-sm rounded-lg font-body-md text-body-md transition-colors border border-transparent w-fit">
+                <label class="font-label-sm text-label-sm text-on-surface" data-i18n="confidentialite">Confidentialité</label>
+                <p class="font-label-sm text-label-sm text-on-surface-variant" data-i18n="confidentialite_desc">Réaffiche l'avertissement sur les données envoyées au modèle d'IA, si tu avais coché « Ne plus afficher ce message ».</p>
+                <button id="btn-reafficher-confidentialite" class="bg-[#333333] text-[#e0e0e0] hover:bg-[#3d3d3d] px-md py-sm rounded-lg font-body-md text-body-md transition-colors border border-transparent w-fit" data-i18n="reafficher_avertissement">
                     Réafficher l'avertissement
                 </button>
               </div>
               <div class="flex flex-col gap-xs pt-sm border-t border-[#333333]">
-                <label class="font-label-sm text-label-sm text-on-surface">Tutoriel</label>
-                <p class="font-label-sm text-label-sm text-on-surface-variant">Réaffiche l'explication de démarrage, si tu avais coché « Ne plus afficher ce message ».</p>
-                <button id="btn-reafficher-tutoriel" class="bg-[#333333] text-[#e0e0e0] hover:bg-[#3d3d3d] px-md py-sm rounded-lg font-body-md text-body-md transition-colors border border-transparent w-fit">
+                <label class="font-label-sm text-label-sm text-on-surface" data-i18n="tutoriel">Tutoriel</label>
+                <p class="font-label-sm text-label-sm text-on-surface-variant" data-i18n="tutoriel_desc">Réaffiche l'explication de démarrage, si tu avais coché « Ne plus afficher ce message ».</p>
+                <button id="btn-reafficher-tutoriel" class="bg-[#333333] text-[#e0e0e0] hover:bg-[#3d3d3d] px-md py-sm rounded-lg font-body-md text-body-md transition-colors border border-transparent w-fit" data-i18n="reafficher_tutoriel">
                     Réafficher le tutoriel
                 </button>
               </div>
@@ -604,16 +605,16 @@
           </section>
           <section id="onglet-api" class="space-y-lg hidden">
             <h3 class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider border-b border-[#333333] pb-sm flex items-center justify-between">
-              <span>API &amp; Moteurs</span>
-              <button type="button" data-aide="moteurs" title="Aide : moteurs IA et clés API" class="flex items-center justify-center w-5 h-5 rounded-full text-on-surface-variant/70 hover:text-on-surface hover:bg-surface-container-highest transition-colors normal-case tracking-normal">
+              <span data-i18n="api_moteurs">API &amp; Moteurs</span>
+              <button type="button" data-aide="moteurs" title="Aide : moteurs IA et clés API" data-i18n-title="titre_aide_moteurs" class="flex items-center justify-center w-5 h-5 rounded-full text-on-surface-variant/70 hover:text-on-surface hover:bg-surface-container-highest transition-colors normal-case tracking-normal">
                 <span class="material-symbols-outlined text-[16px]" data-icon="help">help</span>
               </button>
             </h3>
             <div class="space-y-lg">
               <div class="flex flex-col gap-xs">
                 <label class="font-label-sm text-label-sm text-on-surface flex justify-between" for="settings-nvidia-key">
-                  <span>Clé API NVIDIA NIM</span>
-                  <a class="text-primary-container hover:text-primary transition-colors" href="https://build.nvidia.com" target="_blank">Obtenir une clé</a>
+                  <span data-i18n="cle_nvidia">Clé API NVIDIA NIM</span>
+                  <a class="text-primary-container hover:text-primary transition-colors" href="https://build.nvidia.com" target="_blank" data-i18n="obtenir_cle_nvidia">Obtenir une clé</a>
                 </label>
                 <div class="flex items-center gap-sm">
                   <div class="relative flex-1">
@@ -622,15 +623,15 @@
                     </span>
                     <input class="w-full bg-[#1e1e1e] border border-[#333333] rounded-lg pl-10 pr-md py-sm text-on-surface focus:outline-none focus:border-primary-container font-code text-code" id="settings-nvidia-key" placeholder="nvapi-..." type="password"/>
                   </div>
-                  <button id="btn-save-nvidia" class="bg-[#333333] text-[#e0e0e0] hover:bg-[#3d3d3d] px-md py-sm rounded-lg font-body-md text-body-md transition-colors whitespace-nowrap">
+                  <button id="btn-save-nvidia" class="bg-[#333333] text-[#e0e0e0] hover:bg-[#3d3d3d] px-md py-sm rounded-lg font-body-md text-body-md transition-colors whitespace-nowrap" data-i18n="enregistrer">
                       Enregistrer
                   </button>
                 </div>
               </div>
               <div class="flex flex-col gap-xs">
                 <label class="font-label-sm text-label-sm text-on-surface flex justify-between" for="settings-gemini-key">
-                  <span>Clé API Google Gemini</span>
-                  <a class="text-primary-container hover:text-primary transition-colors" href="https://aistudio.google.com" target="_blank">Obtenir une clé</a>
+                  <span data-i18n="cle_gemini">Clé API Google Gemini</span>
+                  <a class="text-primary-container hover:text-primary transition-colors" href="https://aistudio.google.com" target="_blank" data-i18n="obtenir_cle_gemini">Obtenir une clé</a>
                 </label>
                 <div class="flex items-center gap-sm">
                   <div class="relative flex-1">
@@ -639,26 +640,54 @@
                     </span>
                     <input class="w-full bg-[#1e1e1e] border border-[#333333] rounded-lg pl-10 pr-md py-sm text-on-surface focus:outline-none focus:border-primary-container font-code text-code" id="settings-gemini-key" placeholder="AIzaSy-..." type="password"/>
                   </div>
-                  <button id="btn-save-gemini" class="bg-[#333333] text-[#e0e0e0] hover:bg-[#3d3d3d] px-md py-sm rounded-lg font-body-md text-body-md transition-colors whitespace-nowrap">
+                  <button id="btn-save-gemini" class="bg-[#333333] text-[#e0e0e0] hover:bg-[#3d3d3d] px-md py-sm rounded-lg font-body-md text-body-md transition-colors whitespace-nowrap" data-i18n="enregistrer">
                       Enregistrer
                   </button>
+                </div>
+              </div>
+              <!-- Piston (sandbox d'execution de code) -->
+              <div class="flex flex-col gap-xs pt-sm border-t border-[#333333]">
+                <label class="font-label-sm text-label-sm text-on-surface flex justify-between" for="settings-piston-url">
+                  <span data-i18n="piston_api">Piston API (sandbox code)</span>
+                  <a class="text-primary-container hover:text-primary transition-colors" href="https://github.com/engineer-man/piston" target="_blank" data-i18n="documentation_piston">Documentation</a>
+                </label>
+                <div class="flex items-center gap-sm">
+                  <div class="relative flex-1">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-on-surface-variant">
+                      <span class="material-symbols-outlined text-[18px]" data-icon="dns">dns</span>
+                    </span>
+                    <input class="w-full bg-[#1e1e1e] border border-[#333333] rounded-lg pl-10 pr-md py-sm text-on-surface focus:outline-none focus:border-primary-container font-code text-code" id="settings-piston-url" placeholder="http://localhost:2000" type="text"/>
+                  </div>
+                  <button id="btn-save-piston" class="bg-[#333333] text-[#e0e0e0] hover:bg-[#3d3d3d] px-md py-sm rounded-lg font-body-md text-body-md transition-colors whitespace-nowrap" data-i18n="enregistrer">
+                      Enregistrer
+                  </button>
+                </div>
+                <div class="flex items-center gap-sm pl-10">
+                  <span class="material-symbols-outlined text-[16px] text-on-surface-variant shrink-0" data-icon="info">info</span>
+                  <span class="font-label-sm text-label-sm text-on-surface-variant" data-i18n-html="lancer_piston_html">Lancer Piston : <code class="bg-[#2d2d2d] px-1 py-0.5 rounded text-xs font-code">docker run -d -p 2000:2000 ghcr.io/engineer-man/piston</code></span>
+                </div>
+                <div class="flex items-center gap-sm pl-10">
+                  <button id="btn-test-piston" class="bg-[#333333] text-[#e0e0e0] hover:bg-[#3d3d3d] px-sm py-xs rounded font-label-sm text-label-sm transition-colors whitespace-nowrap" data-i18n="tester_connexion">
+                      Tester la connexion
+                  </button>
+                  <span id="piston-status" class="font-label-sm text-label-sm text-on-surface-variant"></span>
                 </div>
               </div>
             </div>
           </section>
           <section id="onglet-journal" class="space-y-lg hidden">
             <h3 class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider border-b border-[#333333] pb-sm flex items-center justify-between">
-              <span>Journal</span>
-              <button type="button" data-aide="journal" title="Aide : journal" class="flex items-center justify-center w-5 h-5 rounded-full text-on-surface-variant/70 hover:text-on-surface hover:bg-surface-container-highest transition-colors normal-case tracking-normal">
+              <span data-i18n="journal">Journal</span>
+              <button type="button" data-aide="journal" title="Aide : journal" data-i18n-title="titre_aide_journal" class="flex items-center justify-center w-5 h-5 rounded-full text-on-surface-variant/70 hover:text-on-surface hover:bg-surface-container-highest transition-colors normal-case tracking-normal">
                 <span class="material-symbols-outlined text-[16px]" data-icon="help">help</span>
               </button>
             </h3>
             <div class="flex flex-col gap-xs">
-              <p class="font-label-sm text-label-sm text-on-surface-variant">L'application ne garde aucune console ouverte : tout ce qu'elle fait (démarrage, génération ligne par ligne, erreurs) est écrit dans un fichier de log, utile si quelque chose se passe mal.</p>
+              <p class="font-label-sm text-label-sm text-on-surface-variant" data-i18n="journal_param_desc">L'application ne garde aucune console ouverte : tout ce qu'elle fait (démarrage, génération ligne par ligne, erreurs) est écrit dans un fichier de log, utile si quelque chose se passe mal.</p>
               <div class="pt-sm">
                 <button id="btn-ouvrir-logs" class="flex items-center gap-sm bg-[#333333] text-[#e0e0e0] hover:bg-[#3d3d3d] px-md py-sm rounded-lg font-body-md text-body-md transition-colors border border-transparent w-fit">
                   <span class="material-symbols-outlined text-[18px]" data-icon="description">description</span>
-                  Ouvrir le fichier de logs
+                  <span data-i18n="ouvrir_logs">Ouvrir le fichier de logs</span>
                 </button>
               </div>
             </div>
@@ -695,6 +724,59 @@
 </div>
 </main>
 
+<!-- TP interactif : pris dans l'interface, exercice par exercice. La zone de
+     reponse (#exo-zone-reponse) change de forme selon exo.type -- un
+     textarea de code, un champ pour une reponse exacte, ou un textarea libre
+     pour du qualitatif -- cf. afficherExercice() dans app.js. -->
+<div id="modal-exercices" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-lg">
+<div class="max-w-xl w-full max-h-[85vh] overflow-y-auto bg-[#252525] border border-[#333333] rounded-lg shadow-lg p-lg space-y-md">
+  <div class="flex items-center justify-between gap-sm">
+    <div class="flex items-center gap-sm min-w-0">
+      <span class="material-symbols-outlined text-[22px] text-primary-container shrink-0" data-icon="fitness_center">fitness_center</span>
+      <h3 class="font-title-sm text-title-sm text-on-surface truncate" id="exo-notion">TP</h3>
+    </div>
+    <button id="btn-exo-fermer" type="button" class="shrink-0 text-on-surface-variant hover:text-on-surface transition-colors" title="Fermer">
+      <span class="material-symbols-outlined text-[20px]" data-icon="close">close</span>
+    </button>
+  </div>
+
+  <div class="flex items-center justify-between gap-sm">
+    <span class="font-label-sm text-label-sm text-on-surface-variant" id="exo-progression">Exercice 1/1</span>
+    <span class="font-label-sm text-label-sm text-on-surface-variant" id="exo-score">Score : 0%</span>
+  </div>
+  <div class="w-full h-1.5 bg-[#333333] rounded-full overflow-hidden">
+    <div class="h-full rounded-full transition-all duration-300" style="background: linear-gradient(90deg, #7c3aed, #a78bfa); width:0%" id="exo-barre"></div>
+  </div>
+
+  <div id="exo-corps" class="space-y-md">
+    <p class="font-label-sm text-label-sm text-on-surface-variant" id="exo-difficulte"></p>
+    <div class="font-body-md text-body-md text-on-surface whitespace-pre-wrap" id="exo-enonce"></div>
+
+    <div id="exo-zone-reponse"></div>
+
+    <p class="font-body-md text-body-md text-on-surface-variant hidden" id="exo-indice-texte"></p>
+    <p class="font-body-md text-body-md text-on-surface-variant hidden" id="exo-solution-texte"></p>
+    <p class="font-body-md text-body-md" id="exo-feedback"></p>
+
+    <div class="flex items-center gap-sm flex-wrap" id="exo-actions">
+      <button id="btn-exo-indice" type="button" class="px-md py-sm rounded-lg border border-[#333333] text-on-surface-variant hover:bg-[#2d2d2d] transition-colors font-body-md text-body-md">Indice</button>
+      <button id="btn-exo-verifier" type="button" class="btn-primaire px-md py-sm rounded-lg text-white font-medium text-[14px]">Vérifier</button>
+      <button id="btn-exo-solution" type="button" class="px-md py-sm rounded-lg border border-[#333333] text-on-surface-variant hover:bg-[#2d2d2d] transition-colors font-body-md text-body-md">Voir la solution</button>
+      <button id="btn-exo-suivant" type="button" class="ml-auto px-md py-sm rounded-lg border border-[#333333] text-on-surface-variant hover:bg-[#2d2d2d] transition-colors font-body-md text-body-md">Suivant →</button>
+    </div>
+  </div>
+
+  <!-- recapitulatif final, affiche a la place de #exo-corps une fois le dernier exercice passe -->
+  <div id="exo-recap" class="hidden space-y-md">
+    <p class="font-title-sm text-title-sm text-on-surface" id="exo-recap-titre">TP terminé</p>
+    <ul class="space-y-xs" id="exo-recap-notions"></ul>
+    <div class="flex justify-end">
+      <button id="btn-exo-recap-fermer" type="button" class="btn-primaire px-md py-sm rounded-lg text-white font-medium text-[14px]">Fermer</button>
+    </div>
+  </div>
+</div>
+</div>
+
 <!-- Avertissement confidentialite : donnees envoyees au modele d'IA -->
 <div id="modal-confidentialite" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-lg">
 <div class="max-w-md w-full bg-[#252525] border border-[#333333] rounded-lg shadow-lg p-lg space-y-md">
@@ -729,7 +811,7 @@ Selon le fournisseur, ces données peuvent être conservées et réutilisées po
 <li><strong class="text-on-surface">Choisis</strong> une matière, un type de séance et un titre en haut de l'écran.</li>
 <li><strong class="text-on-surface">Ajoute</strong> tes documents (photos, PDF...) : ce sont eux qui servent de base au cours.</li>
 <li><strong class="text-on-surface">Génère le cours</strong> : le bouton se change en « Ouvrir le résultat » une fois le PDF prêt.</li>
-<li><strong class="text-on-surface">Exercices</strong> fabrique ensuite un TP interactif, une fiche et des flashcards à partir du cours généré.</li>
+<li><strong class="text-on-surface">Exercices</strong> fabrique ensuite un TP interactif et une fiche à partir du cours généré.</li>
 </ol>
 <label class="flex items-center gap-xs cursor-pointer select-none">
 <input type="checkbox" id="tutoriel-ne-plus-afficher" class="w-4 h-4 rounded border-[#4a4455] bg-transparent text-primary-container focus:ring-primary-container focus:ring-offset-[#252525]"/>
