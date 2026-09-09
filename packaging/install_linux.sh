@@ -15,6 +15,13 @@ if [ ! -x "$binaire" ] && [ ! -f "$binaire" ]; then
 fi
 chmod +x "$binaire"
 
+# Le wrapper Incipit.sh definit LD_LIBRARY_PATH pour la libpython embarquee ;
+# on le prefere quand il existe (voir packaging/build_linux.sh).
+if [ -f "$ici/Incipit/Incipit.sh" ]; then
+    chmod +x "$ici/Incipit/Incipit.sh"
+    binaire="$ici/Incipit/Incipit.sh"
+fi
+
 # L'icone embarquee par PyInstaller vit sous _internal/ (PyInstaller >= 6)
 # ou directement a la racine du dossier selon la version utilisee au build.
 icone="$ici/Incipit/_internal/frontend/logo.png"

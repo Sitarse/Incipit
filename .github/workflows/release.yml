@@ -68,28 +68,13 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
-
-      - name: Download Linux uv binary
-        run: |
-          mkdir -p packaging/vendor/linux
-          curl -fsSL -o packaging/vendor/linux/uv.tar.gz \
-            https://github.com/astral-sh/uv/releases/latest/download/uv-x86_64-unknown-linux-gnu.tar.gz
-          tar -xzf packaging/vendor/linux/uv.tar.gz -C packaging/vendor/linux --strip-components=1
-          chmod +x packaging/vendor/linux/uv
+          sudo apt-get install -y libgl1 libegl1 \
+            libxcb1 libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
+            libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xfixes0 \
+            libxcb-xinerama0 libxkbcommon-x11-0
 
       - name: Build Linux executable
-        run: |
-          uv run --with pyinstaller --with flask --with "pywebview[qt]" pyinstaller app.py \
-            --name Incipit --onedir --windowed --noconfirm \
-            --distpath dist --workpath build/linux --specpath packaging \
-            --exclude-module pkg_resources \
-            --add-data "${{ github.workspace }}/frontend:frontend" \
-            --add-data "${{ github.workspace }}/generator.py:." \
-            --add-data "${{ github.workspace }}/md2pdf.py:." \
-            --add-data "${{ github.workspace }}/exercices.py:." \
-            --add-data "${{ github.workspace }}/config/keys.env.example:config" \
-            --add-binary "${{ github.workspace }}/packaging/vendor/linux/uv:."
+        run: sh packaging/build_linux.sh
 
       - name: Copy desktop-integration scripts
         run: |
