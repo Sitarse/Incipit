@@ -51,5 +51,11 @@ uv run --with pyinstaller --with flask --with pywebview pyinstaller app.py \
     --add-data "$racine/config/keys.env.example:config" \
     --add-binary "$racine/$uv_bundle:."
 
+# Signature ad-hoc : sans aucune signature, macOS refuse net le bundle
+# ("endommage"). Elle ne remplace pas la notarisation. Meme traitement que la
+# CI (cf. .github/workflows/release.yml) : un bundle construit ici doit se
+# comporter comme celui de la release, sinon on debogue deux paquets differents.
+codesign --force --deep --sign - dist/Incipit.app
+
 echo
 echo "OK : dist/Incipit.app -- double-clic direct."
