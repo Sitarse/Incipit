@@ -34,7 +34,15 @@ Download your platform's executable (see **Distribution** below) and double-clic
 
 > **Windows**: First run may show "Windows protected your PC" / "Unknown publisher". Click **More info → Run anyway**. This is normal for unsigned open-source apps.
 
-Then copy `config/keys.env.example` to `config/keys.env` next to the executable (or paste your key directly in the app's **Settings** tab — same effect). For PDF: Chrome or Edge — already on almost every machine.
+Then paste your key in the app's **Settings** tab. It is stored *outside* the application folder, so updating the app never wipes it:
+
+| OS | Settings file |
+|---|---|
+| Windows | `%APPDATA%\Incipit\keys.env` |
+| macOS | `~/Library/Application Support/Incipit/keys.env` |
+| Linux | `~/.local/share/Incipit/keys.env` |
+
+For PDF: Chrome or Edge — already on almost every machine.
 
 ---
 
@@ -64,4 +72,4 @@ Three standalone executables (Windows, Linux, macOS) — app icon, no visible te
 | **free** (NVIDIA NIM) | free | an `nvapi-…` key |
 | **claude-cli** | Claude Code subscription | `claude` CLI installed |
 
-Selected in the UI, stored in `config/keys.env`.
+Selected in the UI, stored in the settings file listed under **Installation** above.

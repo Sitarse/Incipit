@@ -42,6 +42,57 @@ from exercices import chemin_tp
 
 ICI = Path(__file__).resolve().parent
 
+# Reglages, journal et brouillons : chez l'utilisateur, jamais dans le bundle.
+# Une fois l'application figee, ICI tombe dans _internal/ (Windows, Linux) ou
+# dans Incipit.app (macOS) : y ecrire perd tout a la mise a jour, et echoue
+# franchement quand l'app est posee en lecture seule dans /Applications.
+if WINDOWS:
+    _BASE_DONNEES = Path(os.environ.get("APPDATA") or Path.home() / "AppData" / "Roaming")
+elif MACOS:
+    _BASE_DONNEES = Path.home() / "Library" / "Application Support"
+else:
+    _BASE_DONNEES = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share")
+DONNEES = _BASE_DONNEES / "Incipit"
+DONNEES.mkdir(parents=True, exist_ok=True)
+
+
+def _recuperer(ancien: Path, nouveau: Path) -> Path:
+    """Rapatrie un reglage laisse par une version qui ecrivait dans le bundle.
+
+    Copie plutot que deplace : le bundle est souvent en lecture seule, et une
+    cle d'API perdue a la mise a jour est le genre de detail qui fait croire
+    que l'application est cassee.
+    """
+    try:
+        if not nouveau.exists() and ancien.is_file():
+            nouveau.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(ancien, nouveau)
+    except OSError:
+        pass        # ancien illisible : on repart d'un reglage vierge, sans bruit
+    return nouveau
+
+
+def env_systeme() -> dict[str, str]:
+    """L'environnement d'origine, purge des bibliotheques du bundle.
+
+    PyInstaller -- et notre Incipit.sh -- prefixent LD_LIBRARY_PATH avec le
+    dossier de l'application. Tout sous-processus en herite : `xdg-open` et
+    `uv run` chargeraient la libpython et les Qt embarquees a la place de
+    celles du systeme, et echoueraient sans un mot. Les lanceurs rangent la
+    valeur d'origine dans *_ORIG : on la remet, sinon on retire la variable.
+    """
+    env = dict(os.environ)
+    if not getattr(sys, "frozen", False):
+        return env          # hors bundle, rien n'a ete detourne
+    for var in ("LD_LIBRARY_PATH", "DYLD_LIBRARY_PATH"):
+        origine = env.pop(var + "_ORIG", None)
+        if origine:
+            env[var] = origine
+        else:
+            env.pop(var, None)
+    return env
+
+
 # Langues supportées par l'application (code ISO 639-1)
 LANGUES_APP = {
     "fr": "Français",
@@ -123,10 +174,10 @@ def langue_systeme() -> str:
 # Le chemin historique reste le defaut sur le PC ou il existe deja : changer la
 # destination sous les pieds de l'utilisateur lui ferait croire ses cours perdus.
 _HISTORIQUE = Path.home() / "Desktop" / "Partage_Linux" / "Cours" / "M1" / "Cours"
-DESTINATION_DEFAUT = _HISTORIQUE if _HISTORIQUE.is_dir() else Path.home() / "Cours"
+DESTINATION_DEFAUT = _HISTORIQUE if _HISTORIQUE.is_dir() else Path.home() / "Documents" / "Cours"
 
 # Reglages et cles d'API : hors du code, et hors de git (cf. .gitignore).
-CLE_ENV = ICI / "config" / "keys.env"
+CLE_ENV = _recuperer(ICI / "config" / "keys.env", DONNEES / "keys.env")
 # Le dernier candidat est celui des paquets packaging/*: uv y voyage a cote de
 # l'executable pour que l'utilisateur final n'ait rien a installer lui-meme.
 CANDIDATS_UV = [Path.home() / ".local" / "bin" / ("uv.exe" if WINDOWS else "uv"),
@@ -166,7 +217,7 @@ def ouvrir(cible) -> None:
     lanceur = "open" if MACOS else "xdg-open"
     # Detache : le lanceur ne doit pas retenir l'interface, et sa sortie n'a
     # rien a faire dans le journal de generation.
-    subprocess.Popen([lanceur, cible],
+    subprocess.Popen([lanceur, cible], env=env_systeme(),
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
@@ -199,17 +250,6 @@ def piston_pret() -> str | None:
         return f"Piston injoignable a {url} : {e.reason}"
     except Exception as e:
         return f"Erreur Piston : {e}"
-
-
-def piston_runtimes() -> list[dict]:
-    """Liste des langages supportes par l'instance Piston."""
-    url = piston_url()
-    try:
-        req = urllib.request.Request(f"{url}/api/v2/runtimes", method="GET")
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            return json.loads(resp.read().decode("utf-8"))
-    except Exception:
-        return []
 
 
 def piston_executer(language: str, version: str, code: str, stdin: str = "",
@@ -424,7 +464,8 @@ def enregistrer_transcripteur(code: str) -> None:
 # Un petit JSON a cote de keys.env, relu au lancement : les avertissements
 # (confidentialite, tutoriel, ...) coches "ne plus afficher" restent muets
 # tant que l'utilisateur ne les reactive pas depuis les parametres.
-FICHIER_MESSAGES = ICI / "config" / "messages_masques.json"
+FICHIER_MESSAGES = _recuperer(ICI / "config" / "messages_masques.json",
+                              DONNEES / "messages_masques.json")
 
 
 def messages_masques() -> dict[str, bool]:
@@ -508,7 +549,8 @@ def faire_pdf(sortie: Path, journal, source: Path | None = None) -> Path | None:
     r = subprocess.run([uv, "run", str(ICI / "md2pdf.py"),
                         str(source or sortie), str(pdf)],
                        capture_output=True, text=True, encoding="utf-8",
-                       errors="replace", timeout=300, creationflags=SANS_FENETRE)
+                       errors="replace", timeout=300, creationflags=SANS_FENETRE,
+                       env=env_systeme())
     if pdf.is_file():
         journal(f"PDF : {pdf.name}")
         return pdf
@@ -563,9 +605,16 @@ def faire_supports_complets(sortie: Path, journal, niveau: str = "comme le cours
         return []
     
     # Construire la commande avec les options
+    # --uv : le lanceur du TP doit pouvoir retomber sur un uv, seul interpreteur
+    # garanti present sur un poste sans Python (cf. exercices.lanceur_tp). On y
+    # ecrit celui livre avec l'application plutot que celui du PATH : trouver_uv
+    # passe par which() d'abord, et un uv amene par un autre outil disparait
+    # avec lui, alors que le uv embarque vit aussi longtemps qu'Incipit.
+    embarque = ICI / ("uv.exe" if WINDOWS else "uv")
+    uv_du_tp = str(embarque) if embarque.is_file() else uv
     cmd = [uv, "run", str(ICI / "exercices.py"), "--source", str(sortie),
            "--niveau", niveau, "--moteur", moteur, "--cle-env", str(CLE_ENV),
-           "--langue", langue]
+           "--langue", langue, "--uv", uv_du_tp]
     if modele:
         cmd += ["--modele", modele]
     if not faire_tp:
@@ -578,7 +627,8 @@ def faire_supports_complets(sortie: Path, journal, niveau: str = "comme le cours
         cmd += ["--questions", str(questions)]
     
     r = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8",
-                       errors="replace", timeout=900, creationflags=SANS_FENETRE)
+                       errors="replace", timeout=900, creationflags=SANS_FENETRE,
+                       env=env_systeme())
     faits = fichiers_supports(sortie)
     # La fiche se revise sur papier ou sur telephone : on la passe au meme
     # moule que le cours. Le .md reste a cote, c'est lui la source -- le PDF
@@ -825,7 +875,6 @@ def _self_test() -> None:
     # et que piston_pret renvoie un str ou None sans lever)
     assert callable(piston_url)
     assert callable(piston_pret)
-    assert callable(piston_runtimes)
     assert callable(piston_executer)
     assert callable(_corriger_code_local)
     assert callable(_corriger_code_piston)

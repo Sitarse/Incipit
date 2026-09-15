@@ -57,6 +57,10 @@ cat > dist/Incipit/Incipit.sh << 'EOF'
 # Wrapper pour l'executable PyInstaller : definit LD_LIBRARY_PATH
 # pour que la libpython partagee soit trouvee a cote de l'executable.
 DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# Sauvegarde avant de prefixer : engine.env_systeme() remet cette valeur aux
+# sous-processus (xdg-open, uv run), sinon ils chargent la libpython et les Qt
+# du bundle a la place de celles du systeme et echouent sans un mot.
+export LD_LIBRARY_PATH_ORIG="${LD_LIBRARY_PATH-}"
 export LD_LIBRARY_PATH="$DIR${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 exec "$DIR/Incipit" "$@"
 EOF

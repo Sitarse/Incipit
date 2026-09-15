@@ -214,7 +214,7 @@
 <img src="logo.png" alt="Logo" class="w-12 h-12 rounded-lg object-cover" />
 <div>
 <h1 class="font-title-sm text-title-sm font-bold text-on-surface dark:text-on-surface truncate">Incipit</h1>
-<p class="font-label-sm text-label-sm text-on-surface-variant">v1.0.3</p>
+<p class="font-label-sm text-label-sm text-on-surface-variant">v1.0.4</p>
 </div>
 </div>
 <!-- Main Navigation Group -->
@@ -326,7 +326,7 @@
   </div>
   <p id="hint-obsidian" class="hidden font-label-sm text-label-sm text-on-surface-variant text-right">
     <span data-i18n="pas_encore_installe">Pas encore installé ?</span>
-    <a href="https://obsidian.md" target="_blank"
+    <a href="https://obsidian.md" data-open-url="https://obsidian.md"
        class="text-violet-400 hover:text-violet-300 underline underline-offset-2 transition-colors"
        data-i18n="telecharger_obsidian">
       Téléchargez Obsidian sur obsidian.md
@@ -614,7 +614,7 @@
               <div class="flex flex-col gap-xs">
                 <label class="font-label-sm text-label-sm text-on-surface flex justify-between" for="settings-nvidia-key">
                   <span data-i18n="cle_nvidia">Clé API NVIDIA NIM</span>
-                  <a class="text-primary-container hover:text-primary transition-colors" href="https://build.nvidia.com" target="_blank" data-i18n="obtenir_cle_nvidia">Obtenir une clé</a>
+                  <button type="button" class="text-primary-container hover:text-primary transition-colors" data-open-url="https://build.nvidia.com" data-i18n="obtenir_cle_nvidia">Obtenir une clé</button>
                 </label>
                 <div class="flex items-center gap-sm">
                   <div class="relative flex-1">
@@ -631,14 +631,14 @@
               <div class="flex flex-col gap-xs">
                 <label class="font-label-sm text-label-sm text-on-surface flex justify-between" for="settings-gemini-key">
                   <span data-i18n="cle_gemini">Clé API Google Gemini</span>
-                  <a class="text-primary-container hover:text-primary transition-colors" href="https://aistudio.google.com" target="_blank" data-i18n="obtenir_cle_gemini">Obtenir une clé</a>
+                  <button type="button" class="text-primary-container hover:text-primary transition-colors" data-open-url="https://aistudio.google.com" data-i18n="obtenir_cle_gemini">Obtenir une clé</button>
                 </label>
                 <div class="flex items-center gap-sm">
                   <div class="relative flex-1">
                     <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-on-surface-variant">
                       <span class="material-symbols-outlined text-[18px]" data-icon="key">key</span>
                     </span>
-                    <input class="w-full bg-[#1e1e1e] border border-[#333333] rounded-lg pl-10 pr-md py-sm text-on-surface focus:outline-none focus:border-primary-container font-code text-code" id="settings-gemini-key" placeholder="AIzaSy-..." type="password"/>
+                    <input class="w-full bg-[#1e1e1e] border border-[#333333] rounded-lg pl-10 pr-md py-sm text-on-surface focus:outline-none focus:border-primary-container font-code text-code" id="settings-gemini-key" placeholder="AIzaSy-... ou AQ.Ab..." type="password"/>
                   </div>
                   <button id="btn-save-gemini" class="bg-[#333333] text-[#e0e0e0] hover:bg-[#3d3d3d] px-md py-sm rounded-lg font-body-md text-body-md transition-colors whitespace-nowrap" data-i18n="enregistrer">
                       Enregistrer
@@ -649,7 +649,7 @@
               <div class="flex flex-col gap-xs pt-sm border-t border-[#333333]">
                 <label class="font-label-sm text-label-sm text-on-surface flex justify-between" for="settings-piston-url">
                   <span data-i18n="piston_api">Piston API (sandbox code)</span>
-                  <a class="text-primary-container hover:text-primary transition-colors" href="https://github.com/engineer-man/piston" target="_blank" data-i18n="documentation_piston">Documentation</a>
+                  <button type="button" class="text-primary-container hover:text-primary transition-colors" data-open-url="https://github.com/engineer-man/piston" data-i18n="documentation_piston">Documentation</button>
                 </label>
                 <div class="flex items-center gap-sm">
                   <div class="relative flex-1">

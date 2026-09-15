@@ -385,7 +385,7 @@ def ecrire_reglage(fichier: Path, nom: str, valeur: str) -> None:
     fichier.write_text("\n".join(lignes) + "\n", encoding="utf-8")
 
 
-PREFIXES_CLE = {"NVIDIA_API_KEY": "nvapi-", "GEMINI_API_KEY": "AIza"}
+PREFIXES_CLE = {"NVIDIA_API_KEY": "nvapi-"}
 
 
 def cle_mal_formee(valeur: str, nom: str) -> str | None:
@@ -577,21 +577,41 @@ def texte_du_pdf(chemin: Path,
     Le lien de l'image de la page est colle dans l'en-tete de page, avec ce que
     la page contient : le modele voit du premier coup quelle diapo vaut la peine
     d'etre affichee, et a quel endroit du cours.
-    """
-    from pypdf import PdfReader
 
+    pymupdf (fitz) est essaye en premier : il n'utilise pas pyexpat (contrairement
+    a pypdf) et tourne sans probleme sur Python 3.14 Linux ou la lib systeme
+    libexpat peut etre incompatible. pypdf reste le repli si fitz est absent.
+    """
     images = images or {}
     pages = []
-    for i, page in enumerate(PdfReader(str(chemin)).pages, 1):
-        t = (page.extract_text() or "").strip()
-        lien = ""
-        if i in images:
-            cible, figure = images[i]
-            quoi = ("SCHEMA OU FIGURE, a afficher si la notion est traitee ici"
-                    if figure else "texte seul, ne pas afficher")
-            lien = f"  [{quoi} : ![[{cible}]]]"
-        if t or lien:
-            pages.append(f"--- page {i} ---{lien}\n{t}")
+
+    try:
+        import fitz  # pymupdf
+        doc = fitz.open(str(chemin))
+        for i, page in enumerate(doc, 1):
+            t = page.get_text().strip()
+            lien = ""
+            if i in images:
+                cible, figure = images[i]
+                quoi = ("SCHEMA OU FIGURE, a afficher si la notion est traitee ici"
+                        if figure else "texte seul, ne pas afficher")
+                lien = f"  [{quoi} : ![[{cible}]]]"
+            if t or lien:
+                pages.append(f"--- page {i} ---{lien}\n{t}")
+    except ImportError:
+        # fitz absent : repli sur pypdf
+        from pypdf import PdfReader
+        for i, page in enumerate(PdfReader(str(chemin)).pages, 1):
+            t = (page.extract_text() or "").strip()
+            lien = ""
+            if i in images:
+                cible, figure = images[i]
+                quoi = ("SCHEMA OU FIGURE, a afficher si la notion est traitee ici"
+                        if figure else "texte seul, ne pas afficher")
+                lien = f"  [{quoi} : ![[{cible}]]]"
+            if t or lien:
+                pages.append(f"--- page {i} ---{lien}\n{t}")
+
     if not pages:
         return "[Ce PDF ne contient aucun texte extractible : diapos scannees en image.]"
     return "\n\n".join(pages)
@@ -651,7 +671,9 @@ TRANSCRIPTEURS = {
     "nemotron-omni": Transcripteur("NVIDIA Nemotron Omni  ·  recommande", "nim",
                                    "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"),
     "kimi-k3":       Transcripteur("NVIDIA Kimi K3", "nim", "moonshotai/kimi-k3"),
-    "gemini":        Transcripteur("Google Gemini", "gemini", None),
+    # Gemini n'est plus propose : il est debranche (cf. ORDRE_GRATUIT), donc le
+    # choisir reclamait une cle pour un fournisseur muet -- et transcrire()
+    # arrete tout des qu'une photo echoue. Le remettre ici le jour ou il revient.
     "ocr":           Transcripteur("NVIDIA Nemotron OCR v2  ·  texte imprime", "ocr",
                                    "nvidia/nemotron-ocr-v2"),
 }
@@ -1590,7 +1612,11 @@ def fabriquer(sources: Path, sortie: Path, matiere: str, type_: str, titre: str,
     cle = cle_du_moteur(moteur, cle_env)
     modele = modele_retenu(moteur, modele, cle_env)
 
-    fichiers = [f for f in sorted(sources.iterdir()) if f.is_file()]
+    # sources peut ne pas exister (dossier jamais cree, efface entre-temps) :
+    # sans ce garde, iterdir() leve un FileNotFoundError brut avant le message
+    # clair prevu deux lignes plus bas.
+    fichiers = [f for f in sorted(sources.iterdir()) if f.is_file()] \
+        if sources.is_dir() else []
     photos = [f for f in fichiers if f.suffix.lower() in EXT_IMG]
     pdfs = [f for f in fichiers if f.suffix.lower() == ".pdf"]
     autres = [f for f in fichiers if f not in photos and f not in pdfs]
@@ -1964,10 +1990,13 @@ def _self_test() -> None:
 
         # une cle collee de travers se refuse avant d'etre ecrite
         assert cle_mal_formee("nvapi-abc", "NVIDIA_API_KEY") is None
+        # Gemini : pas de prefixe valide unique (AIzaSy- pour les anciennes,
+        # AQ.Ab... pour les nouvelles cles AI Studio) -- on verifie juste les
+        # regles communes : non vide et sans espace.
         assert cle_mal_formee("AIzaSyAbc", "GEMINI_API_KEY") is None
+        assert cle_mal_formee("AQ.Ab8RxyzBidon", "GEMINI_API_KEY") is None
         assert cle_mal_formee("", "NVIDIA_API_KEY") and cle_mal_formee("  ", "NVIDIA_API_KEY")
         assert cle_mal_formee("sk-ant-truc", "NVIDIA_API_KEY"), "une cle d'un autre fournisseur passe"
-        assert cle_mal_formee("nvapi-abc", "GEMINI_API_KEY"), "une cle d'un autre fournisseur passe"
         assert cle_mal_formee("nvapi-abc def", "NVIDIA_API_KEY"), "une cle avec espace passe"
 
         # une photo deja transcrite ne doit plus rien couter : cle bidon, aucun reseau

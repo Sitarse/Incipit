@@ -141,10 +141,16 @@ jobs:
             --add-data "${{ github.workspace }}/config/keys.env.example:config" \
             --add-binary "${{ github.workspace }}/packaging/vendor/macos/uv:."
 
-      - name: Zip macOS artifact
+      - name: Sign and zip macOS artifact
         run: |
           cd dist
-          zip -r Incipit-macos.zip Incipit.app
+          # Signature ad-hoc : sans aucune signature, macOS refuse net le
+          # bundle ("endommage"). Elle ne remplace pas la notarisation, mais
+          # rend l'app lancable apres le `xattr -cr` indique dans les notes.
+          codesign --force --deep --sign - Incipit.app
+          # -y : garder les liens symboliques. Sans lui, zip suit ceux de
+          # Contents/Frameworks et livre un bundle gonfle et casse.
+          zip -ry Incipit-macos.zip Incipit.app
 
       - name: Upload macOS artifact
         uses: actions/upload-artifact@v4
@@ -180,7 +186,7 @@ jobs:
             ### What's inside
             - **Incipit-windows.zip** → folder with `Incipit.exe` + `uv.exe`
             - **Incipit-linux.tar.gz** → `Incipit/` folder + `install_linux.sh` (adds Incipit to your application menu — run once with `sh install_linux.sh`; `uninstall_linux.sh` removes it again). Without it you can still launch directly via `Incipit/Incipit`.
-            - **Incipit-macos.zip** → `Incipit.app` bundle
+            - **Incipit-macos.zip** → `Incipit.app` bundle. macOS quarantines apps downloaded from the internet: if it refuses to open, run `xattr -cr /Applications/Incipit.app` once.
             
             ### Requirements
             - **Executable**: none — Python, uv, deps bundled. Chrome/Edge for PDF (pre-installed on Win/macOS, `chromium` on Linux).

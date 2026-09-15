@@ -400,7 +400,7 @@ const UI_TRADUCTIONS = {
     "placeholder_nvidia": "nvapi-...",
     "cle_gemini": "Clé API Google Gemini",
     "obtenir_cle_gemini": "Obtenir une clé",
-    "placeholder_gemini": "AIzaSy-...",
+    "placeholder_gemini": "AIzaSy-... ou AQ.Ab...",
     "piston_api": "Piston API (sandbox code)",
     "documentation_piston": "Documentation",
     "placeholder_piston": "http://localhost:2000",
@@ -416,7 +416,7 @@ const UI_TRADUCTIONS = {
     "journal_aide": "Journal",
     "le_processus": "Le processus",
     "ajoutez_fichiers": "Ajoutez vos fichiers",
-    "ajoutez_fichiers_desc": "Glissez vos supports (PDF, Word, texte...) : c'est la matière première dont l'IA s'inspire pour rédiger.",
+    "ajoutez_fichiers_desc": "Ajoutez vos supports (PDF, Word, texte...) : c'est la matière première dont l'IA s'inspire pour rédiger.",
     "precisez_matiere": "Précisez matière, type et contexte",
     "precisez_matiere_desc": "Plus le champ « Contexte » est précis, plus le plan généré colle à ce que vous attendez.",
     "choisissez_moteur": "Choisissez un moteur IA",
@@ -645,7 +645,7 @@ const UI_TRADUCTIONS = {
     "placeholder_nvidia": "nvapi-...",
     "cle_gemini": "Google Gemini API Key",
     "obtenir_cle_gemini": "Get a Key",
-    "placeholder_gemini": "AIzaSy-...",
+    "placeholder_gemini": "AIzaSy-... or AQ.Ab...",
     "piston_api": "Piston API (code sandbox)",
     "documentation_piston": "Documentation",
     "placeholder_piston": "http://localhost:2000",
@@ -661,7 +661,7 @@ const UI_TRADUCTIONS = {
     "journal_aide": "Log",
     "le_processus": "The Process",
     "ajoutez_fichiers": "Add Your Files",
-    "ajoutez_fichiers_desc": "Drag your materials (PDF, Word, text...): this is the raw material the AI uses to write.",
+    "ajoutez_fichiers_desc": "Add your materials (PDF, Word, text...): this is the raw material the AI uses to write.",
     "precisez_matiere": "Specify Subject, Type & Context",
     "precisez_matiere_desc": "The more precise the \"Context\" field, the better the generated plan matches your expectations.",
     "choisissez_moteur": "Choose an AI Engine",
@@ -1844,7 +1844,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // Open destination folder from settings
   $('btn-browse-folder')?.addEventListener('click', () => {
-    poster('/api/ouvrir_destination', {});
+    poster('/api/ouvrir_destination', {}).catch((e) => console.warn('ouvrir_destination :', e));
   });
 
   // Onglets Paramètres : Général / API & Moteurs / Journal partagent le meme
@@ -1866,7 +1866,22 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   $('btn-ouvrir-logs')?.addEventListener('click', () => {
-    poster('/api/ouvrir_logs', {});
+    poster('/api/ouvrir_logs', {}).catch((e) => console.warn('ouvrir_logs :', e));
+  });
+
+  // Liens "Obtenir une clé" et "Documentation" dans les paramètres :
+  // sous pywebview Qt Linux, target="_blank" est souvent bloqué, donc ces
+  // boutons passent par /api/ouvrir_url pour que xdg-open les envoie dans
+  // le navigateur système.
+  document.querySelectorAll('[data-open-url]').forEach((btn) => {
+    btn.addEventListener('click', (ev) => {
+      // Sur un <a>, empeche pywebview de naviguer dans la fenetre de l'app :
+      // le href reste la pour l'accessibilite et hors pywebview, mais c'est
+      // /api/ouvrir_url qui confie le lien au navigateur systeme.
+      ev.preventDefault();
+      poster('/api/ouvrir_url', { url: btn.dataset.openUrl })
+        .catch((e) => console.warn('ouvrir_url :', e));
+    });
   });
 
   // Les deux champs de la modale ecrivent la meme cle que la pastille : meme
@@ -1963,7 +1978,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       // ouvrir tant qu'Obsidian n'est pas installe.
       if (!res.ok) {
         signalerAbsence();
-        window.open('https://obsidian.md', '_blank');
+        // window.open est bloque sous pywebview Qt : meme route que les liens
+        // data-open-url, le navigateur systeme s'en charge.
+        poster('/api/ouvrir_url', { url: 'https://obsidian.md' })
+          .catch((e) => console.warn('ouvrir_url :', e));
       }
     });
   }

@@ -26,6 +26,7 @@ import argparse
 import json
 import os
 import re
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -1077,13 +1078,17 @@ def script_exercices(titre: str, matiere: str, niveau: str,
     return source
 
 
-def lanceur_tp(nom_script: str, platform: str) -> str:
+def lanceur_tp(nom_script: str, platform: str, uv_embarque: str | None = None) -> str:
     """Le double-clic du TP : extension selon l'OS.
 
     Le TP n'est qu'un fichier .py, qu'un double-clic ouvre dans un editeur
     plutot que de le lancer sur la plupart des postes -- d'ou ces lignes
     de colle. `nom_script` est relatif au lanceur (.tp/<cours>_exercices.py),
     qui commence par se placer dans son propre dossier.
+
+    `uv_embarque` : le uv livre a cote de l'executable (cf. engine.CANDIDATS_UV).
+    C'est le seul interpreteur garanti present sur un poste qui n'a ni Python ni
+    uv installes -- exactement le poste de qui vient de telecharger Incipit.
 
     platform: "win32" -> .bat, "darwin" -> .command, "linux" -> .sh
     """
@@ -1108,7 +1113,10 @@ def lanceur_tp(nom_script: str, platform: str) -> str:
             'uv --version >nul 2>&1 && (uv run --script "%TP%" & goto :fin)\r\n'
             'if exist "%USERPROFILE%\\.local\\bin\\uv.exe" '
             '("%USERPROFILE%\\.local\\bin\\uv.exe" run --script "%TP%" & goto :fin)\r\n'
-            "\r\n"
+            + (f'if exist "{uv_embarque.replace("%", "%%")}" '
+               f'("{uv_embarque.replace("%", "%%")}" run --script "%TP%" & goto :fin)\r\n'
+               if uv_embarque else "")
+            + "\r\n"
             "echo Python introuvable. Installe-le depuis https://www.python.org/downloads/\r\n"
             'echo (coche "Add python.exe to PATH"), ou ouvre le TP depuis Incipit.\r\n'
             "pause\r\n"
@@ -1126,7 +1134,8 @@ def lanceur_tp(nom_script: str, platform: str) -> str:
         f'  command -v "$py" >/dev/null 2>&1 && exec "$py" "{nom_script}"\n'
         "done\n"
         "# Aucun Python : uv sait en telecharger un tout seul.\n"
-        'for uv in uv "$HOME/.local/bin/uv"; do\n'
+        f'for uv in uv "$HOME/.local/bin/uv"'
+        f'{" " + shlex.quote(uv_embarque) if uv_embarque else ""}; do\n'
         f'  command -v "$uv" >/dev/null 2>&1 && exec "$uv" run --script "{nom_script}"\n'
         "done\n"
         'echo "Python introuvable : installe python3 (ou uv) puis relance."\n'
@@ -1139,7 +1148,8 @@ def lanceur_tp(nom_script: str, platform: str) -> str:
 def fabriquer(source: Path, niveau: str, cle_env: Path, moteur: str,
              modele: str | None, langue: str = "fr",
              faire_tp: bool = True, faire_fiche: bool = True,
-             focus: str = "", questions: int = QUESTIONS_DEFAUT) -> None:
+             focus: str = "", questions: int = QUESTIONS_DEFAUT,
+             uv: str | None = None) -> None:
     """Lit le cours, genere les supports demandes, les ecrit a cote du cours."""
     if souci := probleme(moteur, cle_env):
         raise SystemExit(souci)
@@ -1196,7 +1206,7 @@ def fabriquer(source: Path, niveau: str, cle_env: Path, moteur: str,
         for vieux in ("_exercices.py", "_exercices.json",
                       "_TP.bat", "_TP.sh", "_TP.command"):
             source.with_name(source.stem + vieux).unlink(missing_ok=True)
-        lanceur.write_text(lanceur_tp(f"{DOSSIER_TP}/{dest_py.name}", platform),
+        lanceur.write_text(lanceur_tp(f"{DOSSIER_TP}/{dest_py.name}", platform, uv),
                            encoding="utf-8", newline="")
         if platform != "win32":
             lanceur.chmod(0o755)     # sinon il n'est pas executable
@@ -1426,6 +1436,17 @@ def _self_test() -> None:
     # un % dans le nom du cours serait mange par le shell de Windows
     assert "100 %% Maths_exercices.py" in lanceur_tp(".tp/100 % Maths_exercices.py",
                                                      "win32")
+    # Le uv livre avec l'application : dernier recours d'un poste sans Python
+    # ni uv. Son chemin contient un espace des qu'Incipit est dans
+    # "Program Files" ou "/Applications", donc il doit ressortir echappe.
+    bat_uv = lanceur_tp(".tp/Cours_exercices.py", "win32",
+                        r"C:\Program Files\Incipit\uv.exe")
+    assert bat_uv.count("run --script") == 3, bat_uv
+    assert r'"C:\Program Files\Incipit\uv.exe" run --script' in bat_uv, bat_uv
+    sh_uv = lanceur_tp(".tp/Cours_exercices.py", "linux", "/opt/Incipit 1.0/uv")
+    assert "'/opt/Incipit 1.0/uv'" in sh_uv, sh_uv
+    # ... et sans uv embarque, rien ne change pour les postes deja equipes
+    assert lanceur_tp(".tp/Cours_exercices.py", "win32") == bat
 
     print("exercices : self-test OK")
 
@@ -1454,6 +1475,8 @@ def main() -> None:
                         "de plus en plus durs)")
     p.add_argument("--no-fiche", action="store_true",
                    help="Ne pas generer la fiche de revision (_fiche.md)")
+    p.add_argument("--uv", help="chemin du uv embarque a cote de l'executable, "
+                                "ecrit dans le lanceur du TP en dernier recours")
     p.add_argument("--self-test", action="store_true")
     a = p.parse_args()
 
@@ -1464,7 +1487,7 @@ def main() -> None:
         p.error("--source est obligatoire")
     fabriquer(a.source, a.niveau, a.cle_env, a.moteur, a.modele, a.langue,
               faire_tp=not a.no_tp, faire_fiche=not a.no_fiche,
-              focus=a.focus, questions=a.questions)
+              focus=a.focus, questions=a.questions, uv=a.uv)
 
 
 if __name__ == "__main__":

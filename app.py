@@ -41,12 +41,12 @@ from engine import (DEFAUT, MOTEURS, TYPES, matieres_existantes, nom_note,
 # static_url_path='' : frontend/ est servi a la racine, sinon app.js ne serait
 # joignable que sur /static/app.js et la page resterait sans aucun script.
 app = Flask(__name__, static_folder='frontend', static_url_path='')
-BASE = engine.ICI / "workspace"
+BASE = engine.DONNEES / "workspace"
 
 # Lance par pythonw, l'app n'a aucune console : ce fichier est le seul endroit
 # ou lire ce qui s'est passe apres coup (erreurs de fond, ligne par ligne de
 # la generation). RotatingFileHandler evite qu'il ne grossisse sans fin.
-DOSSIER_LOGS = engine.ICI / "logs"
+DOSSIER_LOGS = engine.DONNEES / "logs"
 FICHIER_LOG = DOSSIER_LOGS / "app.log"
 logger = logging.getLogger("incipit")
 
@@ -276,7 +276,7 @@ def _pipeline(uv, sources_path, sortie_path, dossier_img, matiere, type_, titre,
         proc = subprocess.Popen(
             cmd, cwd=engine.ICI, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
             text=True, encoding="utf-8", errors="replace", bufsize=1,
-            creationflags=engine.SANS_FENETRE
+            creationflags=engine.SANS_FENETRE, env=engine.env_systeme()
         )
         
         for ligne in proc.stdout:
@@ -433,7 +433,7 @@ def _pipeline_complet(uv, sources_path, sortie_path, dossier_img, matiere, type_
             proc = subprocess.Popen(
                 cmd, cwd=engine.ICI, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                 text=True, encoding="utf-8", errors="replace", bufsize=1,
-                creationflags=engine.SANS_FENETRE
+                creationflags=engine.SANS_FENETRE, env=engine.env_systeme()
             )
             
             for ligne in proc.stdout:
@@ -667,8 +667,12 @@ def api_moteurs():
     transcripteurs = [{"code": c, "libelle": t.libelle,
                        "fournisseur": fournisseur_du_transcripteur(c)}
                       for c, t in generator.TRANSCRIPTEURS.items()]
+    # Un defaut n'a de sens que s'il repond : presenter claude-cli a qui n'a
+    # que sa cle NIM donne un bouton Generer qui echoue au premier clic.
+    prets = [m["code"] for m in sortie if not m["souci"]]
+    defaut = DEFAUT if DEFAUT in prets else (prets[0] if prets else DEFAUT)
     return jsonify({
-        "defaut": DEFAUT, "moteurs": sortie,
+        "defaut": defaut, "moteurs": sortie,
         "transcripteurs": transcripteurs,
         "transcripteur": engine.transcripteur_courant(),
         "fournisseurs": {c: etat_fournisseur(c) for c in generator.FOURNISSEURS},
@@ -728,6 +732,10 @@ def api_cle():
         engine.enregistrer_cle(code, data.get("valeur", ""))
     except ValueError as e:                # cle collee de travers : on le dit
         return jsonify({"erreur": str(e)}), 400
+    except OSError as e:                   # dossier de reglages en lecture seule
+        logger.warning("Ecriture de la cle impossible : %s", e)
+        return jsonify({"erreur": f"Impossible d'écrire dans {engine.DONNEES}. "
+                                  "Vérifie les droits de ce dossier."}), 500
     return jsonify({"ok": True})
 
 
@@ -766,13 +774,6 @@ def api_piston_status():
     })
 
 
-@app.route("/api/piston/runtimes")
-def api_piston_runtimes():
-    """Langages supportes par l'instance Piston."""
-    runtimes = engine.piston_runtimes()
-    return jsonify({"runtimes": runtimes})
-
-
 @app.route("/api/piston/url", methods=["POST"])
 def api_piston_url():
     """Change l'URL de l'API Piston (persiste dans keys.env)."""
@@ -793,7 +794,37 @@ def api_ouvrir_logs():
     n'existe pas encore : mieux qu'un journal vide introuvable."""
     DOSSIER_LOGS.mkdir(exist_ok=True)
     FICHIER_LOG.touch(exist_ok=True)
-    engine.ouvrir(FICHIER_LOG)
+    try:
+        engine.ouvrir(FICHIER_LOG)
+    except Exception as e:
+        # .log n'a aucune association par defaut sous Windows : os.startfile
+        # echoue, et repondre ok:true ferait croire que le bouton a marche.
+        logger.warning("Impossible d'ouvrir le fichier de logs : %s", e)
+        if not engine.WINDOWS:
+            return jsonify({"ok": False, "erreur": str(e)})
+        try:
+            subprocess.Popen(["notepad.exe", str(FICHIER_LOG)])
+        except OSError as e2:
+            logger.warning("Repli sur le bloc-notes impossible : %s", e2)
+            return jsonify({"ok": False, "erreur": str(e)})
+    return jsonify({"ok": True})
+
+
+@app.route("/api/ouvrir_url", methods=["POST"])
+def api_ouvrir_url():
+    """Ouvre une URL dans le navigateur systeme.
+
+    Sous pywebview Qt Linux, target='_blank' est souvent bloque : les liens
+    'Obtenir une cle' et 'Documentation' dans les parametres passent par ici
+    pour s'assurer qu'ils s'ouvrent dans le navigateur de l'OS.
+    """
+    url = (request.json or {}).get("url", "").strip()
+    if not url.startswith(("http://", "https://")):
+        return jsonify({"erreur": "URL invalide."}), 400
+    try:
+        engine.ouvrir(url)
+    except Exception as e:
+        logger.warning("Impossible d'ouvrir l'URL %s : %s", url, e)
     return jsonify({"ok": True})
 
 
@@ -802,7 +833,10 @@ def api_ouvrir_destination():
     """Ouvre le dossier de sortie dans l'explorateur de fichiers."""
     dest = engine.destination_courante()
     dest.mkdir(parents=True, exist_ok=True)
-    engine.ouvrir(dest)
+    try:
+        engine.ouvrir(dest)
+    except Exception as e:
+        logger.warning("Impossible d'ouvrir le dossier destination : %s", e)
     return jsonify({"ok": True})
 
 
