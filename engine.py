@@ -90,6 +90,14 @@ def env_systeme() -> dict[str, str]:
             env[var] = origine
         else:
             env.pop(var, None)
+    
+    # Empecher Python de chercher ses modules dans le dossier _internal (ou se
+    # trouvent nos scripts) : cela causerait des conflits avec les .pyd fournis
+    # par PyInstaller. (ex: ImportError: Module use of python312.dll conflicts).
+    env["PYTHONSAFEPATH"] = "1"
+    env.pop("PYTHONPATH", None)
+    env.pop("PYTHONHOME", None)
+    
     return env
 
 
