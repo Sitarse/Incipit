@@ -973,6 +973,15 @@ def main() -> None:
     _attendre(port)
     url = f"http://127.0.0.1:{port}"
 
+    # Sous Linux, le rendu Qt embarque QtWebEngine (Chromium) dont le bac a
+    # sable reclame les user namespaces non privilegies. Sur un noyau qui les
+    # restreint (durci, ou simplement un defaut recent de la distro), il ne
+    # plante pas : il reste bloque en silence, aucune fenetre ne s'ouvre. La
+    # page rendue ne vient jamais que de notre propre serveur local (127.0.0.1) :
+    # desactiver ce bac a sable precis n'expose aucun contenu distant.
+    if sys.platform.startswith("linux"):
+        os.environ.setdefault("QTWEBENGINE_DISABLE_SANDBOX", "1")
+
     try:
         import webview
     except ImportError:
