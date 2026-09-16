@@ -43,6 +43,7 @@ import urllib.request
 from collections import namedtuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date
+from html.parser import HTMLParser
 from pathlib import Path
 
 # Langues supportées par l'application (code ISO 639-1)
@@ -311,6 +312,45 @@ CHARTE = (
     "cours, pas une de plus)."
 )
 
+# Le sujet du prof est souvent la ou l'etudiant decroche : "copiez ce code",
+# "lancez cette commande", sans dire ni pourquoi ni ce que ca fait. Meme
+# persona, meme methode et meme charte que le cours ; seul le travail change.
+CONSIGNE_SUJET = (
+    "===== CE QUE TU ECRIS ICI : UN SUJET RETRAVAILLE, PAS UN COURS =====\n"
+    "(prime sur la structure de cours decrite par la methode ci-dessus : garde "
+    "sa forme -- encadres, couleurs, schemas, formules -- pas son plan)\n"
+    "\n"
+    "Les sources contiennent un sujet d'exercice, de TD ou de TP donne par le "
+    "professeur. Tu le reecris pour qu'un etudiant qui ne connait rien le "
+    "comprenne de bout en bout. Ce n'est ni un corrige ni un autre exercice : "
+    "l'etudiant fera exactement le meme travail et rendra exactement la meme "
+    "chose. Tu changes la facon de le demander, jamais ce qui est demande.\n"
+    "\n"
+    "Dans cet ordre :\n"
+    "1. L'OBJECTIF : ce que l'etudiant saura faire a la fin, et a quoi ca sert "
+    "en vrai.\n"
+    "2. LES PREREQUIS : chaque notion a connaitre avant de commencer, expliquee "
+    "en une phrase simple avec un exemple.\n"
+    "3. CHAQUE QUESTION OU ETAPE, dans l'ordre et avec la numerotation du "
+    "professeur :\n"
+    "   - la consigne d'origine citee mot pour mot en `> citation` ;\n"
+    "   - ce qu'elle demande, en clair ;\n"
+    "   - pourquoi on fait cette etape, et pourquoi a ce moment-la ;\n"
+    "   - pour chaque commande, fonction, instruction, option ou morceau de code "
+    "fourni par le sujet : ce que fait chaque element et pourquoi on s'en sert. "
+    "Du code ou une commande a recopier se recopie aussi, puis s'explique ligne "
+    "par ligne : l'etudiant ne doit plus jamais taper quelque chose qu'il ne "
+    "comprend pas ;\n"
+    "   - comment verifier qu'on a reussi l'etape, et le piege previsible.\n"
+    "\n"
+    "Tu ne donnes PAS la reponse de ce que l'etudiant doit trouver ou produire "
+    "lui-meme : tu guides (methode, indice, ce qu'on attend), il fait. Tu "
+    "n'inventes aucune question, aucune donnee, aucune valeur. Ce que le sujet "
+    "laisse ambigu ou incomplet se signale dans un `> [!warning] À vérifier`.\n"
+    "Si un cours deja redige sur ce chapitre est fourni, reprends ses mots et "
+    "ses notations pour expliquer : l'etudiant doit reconnaitre ce qu'il a lu."
+)
+
 # La persona ne tient pas sur quinze appels paralleles si elle n'est posee
 # qu'une fois : chaque section la reprend, en court.
 RAPPEL_PERSONA = (
@@ -568,6 +608,75 @@ def texte_du_fichier(chemin: Path) -> str:
     tronque = len(brut) > MAX_OCTETS_FICHIER
     texte = brut[:MAX_OCTETS_FICHIER].decode("utf-8", errors="replace")
     return texte + "\n[... fichier tronque, trop volumineux ...]" if tronque else texte
+
+
+MAX_OCTETS_PAGE = 2_000_000    # lecture brute ; le texte garde est ensuite tronque
+
+
+class _TexteHtml(HTMLParser):
+    """Le texte lisible d'une page web, sans script, style ni menus."""
+    IGNORES = {"script", "style", "noscript", "svg", "nav", "footer", "form"}
+    BLOCS = {"p", "div", "li", "br", "tr", "section", "article", "pre",
+             "h1", "h2", "h3", "h4", "h5", "h6"}
+
+    def __init__(self):
+        super().__init__()
+        self.morceaux, self._cache = [], 0
+
+    def handle_starttag(self, tag, attrs):
+        self._cache += tag in self.IGNORES
+        if tag in self.BLOCS:
+            self.morceaux.append("\n")
+
+    def handle_endtag(self, tag):
+        if tag in self.IGNORES and self._cache:
+            self._cache -= 1
+        elif tag in self.BLOCS:
+            self.morceaux.append("\n")
+
+    def handle_data(self, data):
+        if not self._cache:
+            self.morceaux.append(data)
+
+    def texte(self) -> str:
+        lignes = (" ".join(l.split()) for l in "".join(self.morceaux).splitlines())
+        return "\n".join(l for l in lignes if l)
+
+
+def texte_du_lien(fichier: Path) -> tuple[str, str]:
+    """Un .url depose depuis l'interface -> (adresse, texte de la page).
+
+    Une page illisible (site qui refuse les robots, hors ligne) n'arrete pas le
+    cours comme une photo ratee : c'est une source d'appoint. Mais le modele
+    doit savoir qu'il ne l'a pas lue, sinon il en invente le contenu.
+    """
+    m = re.search(r"^URL=(\S+)", fichier.read_text(encoding="utf-8", errors="replace"), re.M)
+    adresse = m.group(1) if m else fichier.name
+    # Un .url pose a la main peut viser file:// : on n'envoie pas un fichier
+    # local au modele sous couvert de "lien".
+    if not adresse.startswith(("http://", "https://")):
+        return adresse, "[Lien non lu : seules les adresses http(s) sont prises en charge.]"
+    try:
+        requete = urllib.request.Request(adresse, headers={"User-Agent": "Mozilla/5.0 (Incipit)"})
+        with urllib.request.urlopen(requete, timeout=20) as r:
+            brut = r.read(MAX_OCTETS_PAGE)
+            charset = r.headers.get_content_charset() or "utf-8"
+            genre = r.headers.get_content_type()
+    except (OSError, ValueError) as e:     # URLError et les timeouts sont des OSError
+        return adresse, f"[Page illisible ({e}) : n'en invente pas le contenu.]"
+    try:
+        texte = brut.decode(charset, errors="replace")
+    except LookupError:
+        texte = brut.decode("utf-8", errors="replace")
+    if "html" in genre:
+        page = _TexteHtml()
+        page.feed(texte)
+        texte = page.texte()
+    elif not genre.startswith("text/"):
+        return adresse, f"[Contenu {genre} non lu : a deposer comme fichier.]"
+    if len(texte) > MAX_OCTETS_FICHIER:
+        texte = texte[:MAX_OCTETS_FICHIER] + "\n[... page tronquee, trop volumineuse ...]"
+    return adresse, texte
 
 
 def texte_du_pdf(chemin: Path,
@@ -1073,13 +1182,17 @@ def transcrire(moteur: str, modele: str | None, cle: str | None, photos: list[Pa
 
 # -------------------------------------------------------------------- prompt
 
-def consigne_systeme(langue: str = "fr") -> str:
+def consigne_systeme(langue: str = "fr", sujet: bool = False) -> str:
     """La skill `cours` telle quelle : c'est elle, la methode pedagogique.
 
     Elle est prise en sandwich entre la persona -- qui redige, et pour qui --
     et la charte, qui tranche les arbitrages que la methode laisse ouverts.
     La charte passe en dernier parce qu'elle prime : en cas de desaccord avec
     la methode, c'est le lecteur qui gagne, pas la forme.
+
+    `sujet` : reecrire le sujet d'exercice depose plutot que rediger le cours.
+    Sa consigne se glisse apres la methode (elle en garde la forme, pas le plan)
+    et avant la charte, qui prime toujours.
     """
     if not SKILL.is_file():
         raise SystemExit(f"Methode introuvable : {SKILL}")
@@ -1098,11 +1211,13 @@ def consigne_systeme(langue: str = "fr") -> str:
     }
     nom_langue = noms_langues.get(langue, "français")
     
+    quoi, ce = ("un sujet d'exercice", "Le sujet") if sujet else ("un cours", "Le cours")
     return (
-        f"Tu rediges un cours pour un etudiant, en {nom_langue}, en Markdown Obsidian.\n\n"
-        f"IMPORTANT : Le cours DOIT etre redige ENTIEREMENT en {nom_langue}. Pas un mot dans une autre langue.\n\n"
+        f"Tu rediges {quoi} pour un etudiant, en {nom_langue}, en Markdown Obsidian.\n\n"
+        f"IMPORTANT : {ce} DOIT etre redige ENTIEREMENT en {nom_langue}. Pas un mot dans une autre langue.\n\n"
         + PERSONA + "\n\n"
         "Applique la methode ci-dessous a la lettre.\n\n" + corps + "\n\n"
+        + (CONSIGNE_SUJET + "\n\n" if sujet else "")
         + CHARTE + "\n\n"
         "Contraintes de sortie : reponds uniquement par le contenu du fichier .md, "
         "en-tete YAML compris. Aucun commentaire avant ou apres, aucun bloc de code "
@@ -1114,7 +1229,8 @@ def consigne_systeme(langue: str = "fr") -> str:
 def demande(matiere: str, type_: str, titre: str,
             transcriptions: list[tuple[str, str]],
             pdfs: list[tuple[str, str]], liens: list[str],
-            autres: list[tuple[str, str]] = (), langue: str = "fr") -> str:
+            autres: list[tuple[str, str]] = (), langue: str = "fr",
+            pages: list[tuple[str, str]] = ()) -> str:
     morceaux = [
         f"Matiere : {matiere}",
         f"Seance  : {type_} ({TYPES.get(type_, type_)})",
@@ -1146,7 +1262,14 @@ def demande(matiere: str, type_: str, titre: str,
         # langage (via l'extension) sans qu'on le lui dise en prose
         langue = Path(nom).suffix.lstrip(".")
         morceaux += ["", f"===== FICHIER : {nom} =====", f"```{langue}", texte, "```"]
+    for adresse, texte in pages:
+        morceaux += ["", f"===== PAGE WEB : {adresse} =====", texte]
     return "\n".join(morceaux)
+
+
+def chemin_sujet(cours: Path) -> Path:
+    """Le sujet retravaille, a cote du cours dont il porte le nom."""
+    return cours.with_name(cours.stem + "_sujet.md")
 
 
 def tracer_moteur(md: str, moteur: str) -> str:
@@ -1607,7 +1730,10 @@ def destination_retenue(defaut: Path, fichier: Path) -> Path:
 
 def fabriquer(sources: Path, sortie: Path, matiere: str, type_: str, titre: str,
               liens: list[str], cle_env: Path, moteur: str,
-              modele: str | None = None, langue: str = "fr") -> None:
+              modele: str | None = None, langue: str = "fr",
+              sujet: bool = False) -> None:
+    """Les sources -> le cours dans `sortie`, ou avec `sujet` le sujet
+    d'exercice retravaille a cote (cf. chemin_sujet)."""
     if souci := probleme(moteur, cle_env):
         raise SystemExit(souci)
     cle = cle_du_moteur(moteur, cle_env)
@@ -1625,6 +1751,15 @@ def fabriquer(sources: Path, sortie: Path, matiere: str, type_: str, titre: str,
         raise SystemExit(f"Aucune source dans {sources}")
     dire(f"{MOTEURS[moteur].libelle}" + (f"  [{modele}]" if modele else ""))
     dire(f"{len(photos)} photo(s), {len(pdfs)} PDF, {len(autres)} autre(s) fichier(s)", 5)
+
+    # Les liens colles dans l'interface arrivent en .url : c'est la page qu'on
+    # lit, pas les deux lignes du raccourci.
+    pages = []
+    for f in [f for f in autres if f.suffix.lower() == ".url"]:
+        autres.remove(f)
+        adresse, texte = texte_du_lien(f)
+        dire(f"{adresse} : {len(texte.split())} mots")
+        pages.append((adresse, texte))
 
     textes_autres = []
     for f in autres:
@@ -1651,7 +1786,8 @@ def fabriquer(sources: Path, sortie: Path, matiere: str, type_: str, titre: str,
         dire(f"{pdf.name} : {len(texte.split())} mots, {len(images)} page(s) en image")
         textes_pdf.append((pdf.name, texte))
 
-    dire("Redaction du cours", REDACTION_DEBUT)
+    etape = "Reecriture du sujet" if sujet else "Redaction du cours"
+    dire(etape, REDACTION_DEBUT)
     dernier = 0.0
 
     def avancer(cumul: str) -> None:
@@ -1662,11 +1798,25 @@ def fabriquer(sources: Path, sortie: Path, matiere: str, type_: str, titre: str,
         dernier = time.time()
         mots = len(cumul.split())
         part = min(1.0, mots / MOTS_ATTENDUS)
-        dire(f"Redaction du cours  ({mots} mots)",
+        dire(f"{etape}  ({mots} mots)",
              REDACTION_DEBUT + round((REDACTION_FIN - REDACTION_DEBUT) * part))
 
-    base = demande(matiere, type_, titre, transcriptions, textes_pdf, liens, textes_autres, langue)
-    if moteur in PAR_PAQUETS:
+    base = demande(matiere, type_, titre, transcriptions, textes_pdf, liens, textes_autres,
+                   langue, pages)
+    if sujet:
+        # Le cours deja redige donne ses mots et ses notations a l'explication.
+        # ponytail: un seul appel meme en gratuit (pas de redaction par paquets) --
+        # un sujet est bien plus court qu'un cours ; a decouper par question si
+        # les sujets longs sortent tronques.
+        if sortie.is_file():
+            base += ("\n\n===== COURS DEJA REDIGE SUR CE CHAPITRE (pour expliquer "
+                     "avec ses mots, pas a recopier) =====\n"
+                     + sortie.read_text(encoding="utf-8"))
+        md = nettoyer(repondre(
+            moteur, modele, cle, consigne_systeme(langue, sujet=True), base,
+            cle_env=cle_env, max_jetons=MAX_JETONS_COURS, au_fil=avancer))
+        sortie = chemin_sujet(sortie)
+    elif moteur in PAR_PAQUETS:
         # un seul appel fait rationner le modele gratuit : ~325 mots par partie
         # quoi qu'elle merite. Une partie par appel lui rend son budget entier.
         md = rediger_par_paquets(
@@ -1678,7 +1828,7 @@ def fabriquer(sources: Path, sortie: Path, matiere: str, type_: str, titre: str,
             moteur, modele, cle, consigne_systeme(langue), base,
             cle_env=cle_env, max_jetons=MAX_JETONS_COURS, au_fil=avancer))
     if len(md.split()) < 200:
-        raise SystemExit(f"Cours trop court, quelque chose a echoue :\n{md[:400]}")
+        raise SystemExit(f"Texte trop court, quelque chose a echoue :\n{md[:400]}")
 
     md = tracer_moteur(md, MOTEUR_UTILISE)
     dire(f"redige par : {MOTEUR_UTILISE or 'moteur inconnu'}")
@@ -1706,6 +1856,28 @@ def _self_test() -> None:
 
     consigne_en = consigne_systeme("en")
     assert "en anglais" in consigne_en
+
+    # Le sujet garde persona, methode et charte ; sa consigne passe apres la
+    # methode (elle en garde la forme) et avant la charte (qui prime toujours).
+    s = consigne_systeme("fr", sujet=True)
+    assert "UN SUJET RETRAVAILLE" not in consigne, "le cours ne doit pas la recevoir"
+    assert s.index("QUI TU ES") < s.index("Marquer les ajouts") \
+        < s.index("UN SUJET RETRAVAILLE") < s.index("CHARTE NON NEGOCIABLE")
+    assert chemin_sujet(Path("M/CM - T/CM - T.md")) == Path("M/CM - T/CM - T_sujet.md")
+
+    page = _TexteHtml()
+    page.feed("<html><head><title>Piles</title><style>p{}</style></head><body>"
+              "<nav>Menu</nav><p>Une <b>pile</b> est LIFO.</p><script>x()</script>"
+              "<ul><li>push</li><li>pop</li></ul></body></html>")
+    assert page.texte() == "Piles\nUne pile est LIFO.\npush\npop", page.texte()
+    assert "===== PAGE WEB : https://a.b =====\ntexte" in demande(
+        "M", "TP", "T", [], [], [], pages=[("https://a.b", "texte")])
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmp:
+        local = Path(tmp) / "x.url"
+        local.write_text("[InternetShortcut]\nURL=file:///etc/passwd\n", encoding="utf-8")
+        adresse, texte = texte_du_lien(local)
+        assert adresse == "file:///etc/passwd" and "non lu" in texte, "file:// ne se lit pas"
 
     d = demande("Maths", "TD", "Series", [("p1.jpg", "notes")], [("d.pdf", "diapo")],
                 ["Maths/_img/series/p1.jpg"])
@@ -2053,6 +2225,9 @@ def main() -> None:
                    default=Path(__file__).resolve().parent / "config" / "keys.env")
     p.add_argument("--langue", default="fr", choices=list(LANGUES_APP.keys()),
                    help="Langue du cours généré (code ISO 639-1)")
+    p.add_argument("--sujet", action="store_true",
+                   help="reecrit le sujet d'exercice depose (a cote de --sortie) "
+                        "au lieu de rediger le cours")
     p.add_argument("--self-test", action="store_true")
     a = p.parse_args()
 
@@ -2062,7 +2237,7 @@ def main() -> None:
     if not a.sources or not a.sortie:
         p.error("--sources et --sortie sont obligatoires")
     fabriquer(a.sources, a.sortie, a.matiere, a.type_, a.titre, a.liens, a.cle_env,
-              a.moteur, a.modele, a.langue)
+              a.moteur, a.modele, a.langue, a.sujet)
 
 
 if __name__ == "__main__":

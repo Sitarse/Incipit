@@ -203,19 +203,69 @@ def api_upload_fichiers():
     titre = request.form.get("titre", "")
     sources_path = get_sources(matiere, type_, titre)
     sources_path.mkdir(parents=True, exist_ok=True)
-    
+
     for key, f in request.files.items():
         if f.filename:
-            name = os.path.basename(f.filename)
-            dest = sources_path / name
-            i = 1
-            while dest.exists():
-                stem = Path(name).stem
-                suffix = Path(name).suffix
-                dest = sources_path / f"{stem}-{i}{suffix}"
-                i += 1
-            f.save(str(dest))
+            f.save(str(_nom_libre(sources_path, os.path.basename(f.filename))))
     return jsonify({"ok": True})
+
+def _nom_libre(dossier, nom):
+    """`dossier/nom`, suffixe -1, -2... si le nom est deja pris."""
+    dest, i = dossier / nom, 1
+    while dest.exists():
+        dest = dossier / f"{Path(nom).stem}-{i}{Path(nom).suffix}"
+        i += 1
+    return dest
+
+def _fichiers(dossier):
+    """Les fichiers deposes dans un dossier de sources, [] s'il n'existe pas."""
+    return [f for f in dossier.iterdir() if f.is_file()] if dossier.is_dir() else []
+
+@app.route("/api/liens", methods=["POST"])
+def api_ajouter_lien():
+    """Range un lien colle dans les sources, comme un fichier .url : il se liste,
+    se supprime et suit le cours comme les autres, et generator.py lit sa page."""
+    data = request.json
+    url = (data.get("url") or "").strip()
+    morceaux = urllib.parse.urlsplit(url)
+    # Validation a la frontiere : pas de file://, et pas de retour a la ligne
+    # qui ajouterait des lignes au raccourci ecrit plus bas.
+    if morceaux.scheme not in ("http", "https") or not morceaux.netloc \
+            or any(c.isspace() for c in url):
+        return jsonify({"erreur": f"Lien invalide : {url[:80]}"}), 400
+    sources_path = get_sources(data.get("matiere", ""), data.get("type", "CM"),
+                               data.get("titre", ""))
+    sources_path.mkdir(parents=True, exist_ok=True)
+    lisible = (morceaux.netloc + morceaux.path).replace(".", " ").replace("/", " ")
+    nom = slug(lisible)[:60] + ".url"
+    _nom_libre(sources_path, nom).write_text(f"[InternetShortcut]\nURL={url}\n",
+                                             encoding="utf-8")
+    return jsonify({"ok": True})
+
+@app.route("/api/sources/suivre", methods=["POST"])
+def api_suivre_sources():
+    """Les fichiers deposes suivent le cours quand sa matiere, son type ou son
+    titre change : ces trois champs nomment le dossier des sources, et deposer
+    avant de nommer faisait disparaitre les fichiers a la premiere lettre tapee.
+
+    `de` : ou vivent les fichiers du brouillon (None juste apres une generation :
+    ils appartiennent alors au cours genere), `vers` : le cours affiche. Rend
+    l'emplacement ou ils vivent desormais. On ne verse jamais dans des sources
+    deja remplies : les fichiers de deux cours ne doivent pas se melanger, et
+    le brouillon attend alors le prochain nom libre.
+    """
+    data = request.json
+    de, vers = data.get("de"), data["vers"]
+    dst = get_sources(vers["matiere"], vers["type"], vers["titre"])
+    if _fichiers(dst):
+        return jsonify({"origine": de})
+    if de:
+        src = get_sources(de["matiere"], de["type"], de["titre"])
+        if src != dst:
+            dst.mkdir(parents=True, exist_ok=True)
+            for f in _fichiers(src):
+                shutil.move(str(f), str(dst / f.name))
+    return jsonify({"origine": vers})
 
 @app.route("/api/fichiers/<nom>", methods=["DELETE"])
 def api_delete_fichier(nom):
@@ -349,6 +399,8 @@ def api_generer_complet():
     - generer_cours : bool, generer le cours principal
     - generer_tp : bool, generer le TP interactif
     - generer_fiche : bool, generer la fiche de revision
+    - generer_sujet : bool, reecrire le sujet d'exercice depose (a partir des
+      sources, pas du cours : il n'exige donc pas que le cours existe)
     - niveau : str, niveau pour TP/fiche (defaut: "comme le cours")
     - tp_focus : str, sur quoi porte le TP (defaut: vide = tout le cours)
     - tp_questions : int, nombre d'exercices du TP (defaut: 0 = 5, progressifs)
@@ -365,6 +417,7 @@ def api_generer_complet():
     generer_cours = data.get("generer_cours", True)
     generer_tp = data.get("generer_tp", False)
     generer_fiche = data.get("generer_fiche", False)
+    generer_sujet = data.get("generer_sujet", False)
     niveau = data.get("niveau") or "comme le cours"
     tp_focus = (data.get("tp_focus") or "").strip()
     # Un champ vide, du texte, un nombre absurde : tout ce qui n'est pas un
@@ -375,7 +428,7 @@ def api_generer_complet():
         tp_questions = 0
 
     # Au moins une option doit être cochée
-    if not any([generer_cours, generer_tp, generer_fiche]):
+    if not any([generer_cours, generer_tp, generer_fiche, generer_sujet]):
         return jsonify({"erreur": "Choisis au moins une option à générer."}), 400
     
     # Si on ne génère pas le cours mais qu'on veut les supports, vérifier que le cours existe
@@ -399,6 +452,7 @@ def api_generer_complet():
         "generer_cours": generer_cours,
         "generer_tp": generer_tp,
         "generer_fiche": generer_fiche,
+        "generer_sujet": generer_sujet,
         "niveau": niveau,
         "tp_focus": tp_focus,
         "tp_questions": tp_questions,
@@ -412,56 +466,72 @@ def api_generer_complet():
     return jsonify({"ok": True})
 
 
+def _executer(cmd):
+    """Lance generator.py et relaie sa sortie en SSE, ligne par ligne. Rend le
+    code de sortie."""
+    proc = subprocess.Popen(
+        cmd, cwd=engine.ICI, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        text=True, encoding="utf-8", errors="replace", bufsize=1,
+        creationflags=engine.SANS_FENETRE, env=engine.env_systeme()
+    )
+    for ligne in proc.stdout:
+        if ligne.strip():
+            logger.info(ligne.rstrip())
+        for genre, charge in engine.analyser(ligne):
+            if genre == "phase":
+                texte, pct = charge
+                notify_clients(sse_event("phase", {"texte": texte, "pct": pct}))
+            elif genre == "log":
+                notify_clients(sse_event("log", {"texte": charge, "tag": "doux"}))
+            elif genre == "detail":
+                notify_clients(sse_event("detail", {"texte": charge}))
+    return proc.wait()
+
+
 def _pipeline_complet(uv, sources_path, sortie_path, dossier_img, matiere, type_, titre, moteur_choisi, langue, options):
-    """Pipeline complet : cours + supports selon options. Tourne dans un thread."""
+    """Pipeline complet : cours, sujet retravaille et supports selon options.
+    Tourne dans un thread."""
     def journal(t):
         notify_clients(sse_event("log", {"texte": t}))
         notify_clients(sse_event("detail", {"texte": t}))
-    
+
     try:
-        # Phase 1 : Générer le cours si demandé
-        if options["generer_cours"]:
-            notify_clients(sse_event("phase", {"texte": "Préparation du cours", "pct": 3}))
+        pdf = None
+        fichiers = []
+        # Le cours d'abord, le sujet ensuite : cocher les deux laisse le sujet
+        # s'expliquer avec les mots du cours qui vient d'etre ecrit.
+        for sujet in (False, True):
+            if not options["generer_sujet" if sujet else "generer_cours"]:
+                continue
+            cible = generator.chemin_sujet(sortie_path) if sujet else sortie_path
+            notify_clients(sse_event("phase", {"texte": "Préparation du sujet" if sujet
+                                               else "Préparation du cours", "pct": 3}))
             sortie_path.parent.mkdir(parents=True, exist_ok=True)
             engine.assurer_vault(engine.destination_courante())
-            
+
             images = _copier_images(sources_path, dossier_img, sortie_path)
             if images:
                 journal(f"{len(images)} photo(s) copiée(s) à côté du cours.")
-            
-            cmd = engine.commande_generer(uv, sources_path, sortie_path, matiere, type_, titre, images, moteur_choisi, None, langue)
-            proc = subprocess.Popen(
-                cmd, cwd=engine.ICI, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                text=True, encoding="utf-8", errors="replace", bufsize=1,
-                creationflags=engine.SANS_FENETRE, env=engine.env_systeme()
-            )
-            
-            for ligne in proc.stdout:
-                if ligne.strip():
-                    logger.info(ligne.rstrip())
-                for genre, charge in engine.analyser(ligne):
-                    if genre == "phase":
-                        texte, pct = charge
-                        notify_clients(sse_event("phase", {"texte": texte, "pct": pct}))
-                    elif genre == "log":
-                        notify_clients(sse_event("log", {"texte": charge, "tag": "doux"}))
-                    elif genre == "detail":
-                        notify_clients(sse_event("detail", {"texte": charge}))
-                        
-            code = proc.wait()
+
+            cmd = engine.commande_generer(uv, sources_path, sortie_path, matiere, type_, titre,
+                                          images, moteur_choisi, None, langue, sujet)
+            code = _executer(cmd)
+            quoi = "du sujet" if sujet else "du cours"
             if code != 0:
-                notify_clients(sse_event("erreur", {"message": f"La génération du cours a échoué (code {code})."}))
+                notify_clients(sse_event("erreur", {"message": f"La génération {quoi} a échoué (code {code})."}))
                 return
-                
-            if not sortie_path.is_file():
-                notify_clients(sse_event("erreur", {"message": "Aucun cours n'a été écrit."}))
+            if not cible.is_file():
+                notify_clients(sse_event("erreur", {"message": f"Rien n'a été écrit pour la génération {quoi}."}))
                 return
-            
+
             notify_clients(sse_event("phase", {"texte": "Mise en page du PDF", "pct": 96}))
-            pdf = engine.faire_pdf(sortie_path, journal)
+            pdf_cible = engine.faire_pdf(cible, journal)
+            if sujet:
+                fichiers += [str(p) for p in (cible, pdf_cible) if p]
+            else:
+                pdf = pdf_cible
 
         # Phase 2 : Générer les supports si demandés
-        fichiers = None
         if any([options["generer_tp"], options["generer_fiche"]]):
             notify_clients(sse_event("phase", {"texte": "Génération des supports", "pct": 10}))
             faits = engine.faire_supports_complets(sortie_path, journal, niveau=options["niveau"],
@@ -473,15 +543,15 @@ def _pipeline_complet(uv, sources_path, sortie_path, dossier_img, matiere, type_
             if not faits:
                 notify_clients(sse_event("erreur", {"message": "Aucun support n'a été écrit."}))
                 return
-            fichiers = [str(p) for p in faits]
+            fichiers += [str(p) for p in faits]
 
         # Un seul evenement final, tout a la fin : le frontend ferme le flux SSE
         # des qu'il le recoit. Un "fini" envoye apres le cours coupait la ligne
         # avant que les supports, generes ensuite, aient pu s'annoncer.
         notify_clients(sse_event("phase", {"texte": "Terminé", "pct": 100}))
         notify_clients(sse_event("fini" if options["generer_cours"] else "supports",
-                                 {"pdf": str(pdf) if options["generer_cours"] and pdf
-                                  else None, "fichiers": fichiers}))
+                                 {"pdf": str(pdf) if pdf else None,
+                                  "fichiers": fichiers or None}))
 
     except Exception as e:
         logger.exception("Echec de la generation complete")

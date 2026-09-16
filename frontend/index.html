@@ -405,8 +405,18 @@
                         <div class="py-xl flex flex-col items-center justify-center text-on-surface-variant opacity-50">
                             <span class="material-symbols-outlined text-[48px] mb-sm" data-icon="upload_file">upload_file</span>
                             <p class="font-body-md text-body-md" data-i18n="aucun_fichier">Aucun fichier ajouté.</p>
-                        </div> 
+                        </div>
                         -->
+</div>
+<!-- Un lien colle ici devient une source comme un fichier (.url dans la liste) :
+     sa page est lue a la generation. Plusieurs liens separes par des espaces. -->
+<div class="flex gap-sm mt-sm">
+<input type="text" id="lien-url" autocomplete="off" data-i18n="coller_lien" placeholder="Coller un lien (https://…) puis Entrée"
+  class="flex-1 min-w-0 h-9 px-sm rounded border border-[#333333] bg-[#1e1e1e] text-on-surface placeholder:text-on-surface-variant focus:border-primary-container focus:ring-0"/>
+<button class="flex items-center gap-xs px-md py-sm bg-transparent border border-[#333333] hover:bg-[#3d3d3d] text-[#e0e0e0] rounded transition-colors font-label-sm text-label-sm" id="btn-lien" type="button">
+<span class="material-symbols-outlined text-[16px]" data-icon="link">link</span>
+<span data-i18n="ajouter_lien">Ajouter le lien</span>
+</button>
 </div>
 </section>
 <!-- Section 2.5: Options de génération (entre Photos/PDF et Moteur IA) -->

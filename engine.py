@@ -522,12 +522,14 @@ def analyser(ligne: str) -> list[tuple[str, object]]:
 def commande_generer(uv: str, sources: Path, sortie: Path, matiere: str,
                      type_: str, titre: str, liens: list[str],
                      moteur: str = DEFAUT, modele: str | None = None,
-                     langue: str = "fr") -> list[str]:
+                     langue: str = "fr", sujet: bool = False) -> list[str]:
     cmd = [uv, "run", str(ICI / "generator.py"),
            "--sources", str(sources), "--sortie", str(sortie),
            "--matiere", matiere, "--type", type_, "--titre", titre,
            "--moteur", moteur, "--cle-env", str(CLE_ENV),
            "--langue", langue]
+    if sujet:
+        cmd += ["--sujet"]
     if modele:
         cmd += ["--modele", modele]
     for lien in liens:
@@ -859,6 +861,9 @@ def _self_test() -> None:
     assert defaut[defaut.index("--moteur") + 1] == DEFAUT
     # ... et aucun --modele vide qui ecraserait le choix garde dans keys.env
     assert "--modele" not in defaut
+    assert "--sujet" not in defaut, "le cours ne doit jamais partir en mode sujet"
+    assert "--sujet" in commande_generer(uv, Path("/s"), Path("/o/x.md"), "M", "TP",
+                                         "X", [], sujet=True)
 
     # corriger_code : vrai sous-processus, comme le TP.py genere -- un test
     # qui reussit, un qui rate, une exception de test ne doit pas faire

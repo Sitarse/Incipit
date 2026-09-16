@@ -321,6 +321,10 @@ const UI_TRADUCTIONS = {
     "desc_cours": "Génère le cours structuré (Markdown + PDF)",
     "desc_tp": "Sujets progressifs, notés sur 100 — 5 questions sur tout le cours par défaut",
     "desc_fiche": "Résumé condensé du cours pour réviser vite",
+    "sujet_retravaille": "Sujet retravaillé",
+    "desc_sujet": "Réécrit le sujet de TD/TP déposé pour qu'il soit clair : même exercice, chaque étape et chaque commande expliquées, sans donner les réponses",
+    "coller_lien": "Coller un lien (https://…) puis Entrée",
+    "ajouter_lien": "Ajouter le lien",
     "niveau_exercices": "Niveau des exercices (TP, fiche)",
     "placeholder_niveau": "comme le cours — ex. débutant, licence 2, agrégation…",
     "tp_focus": "Sur quoi porte le TP (facultatif)",
@@ -498,6 +502,12 @@ const UI_TRADUCTIONS = {
     "phase_corps_assemble": "corps assemblé",
     "phase_lecture_pdf": "Lecture des PDF",
     "phase_redaction": "Rédaction du cours",
+    "phase_sujet": "Réécriture du sujet",
+    "phase_preparation_cours": "Préparation du cours",
+    "phase_preparation_sujet": "Préparation du sujet",
+    "phase_pdf": "Mise en page du PDF",
+    "phase_supports": "Génération des supports",
+    "phase_termine": "Terminé",
     "phase_autres_fichiers": "autre(s) fichier(s)",
     "unite_mots": "mots",
     "pret": "prêt",
@@ -579,6 +589,10 @@ const UI_TRADUCTIONS = {
     "desc_cours": "Generates the structured course (Markdown + PDF)",
     "desc_tp": "Progressive exercises, scored out of 100 — 5 questions covering the whole course by default",
     "desc_fiche": "Condensed course summary for quick revision",
+    "sujet_retravaille": "Reworked assignment",
+    "desc_sujet": "Rewrites the uploaded exercise or lab sheet so it is clear: same exercise, every step and command explained, without giving the answers",
+    "coller_lien": "Paste a link (https://…) then Enter",
+    "ajouter_lien": "Add link",
     "niveau_exercices": "Exercise Level (Lab, Sheet)",
     "placeholder_niveau": "like the course — e.g. beginner, undergrad, competitive exam…",
     "tp_focus": "Lab Focus (optional)",
@@ -748,6 +762,12 @@ const UI_TRADUCTIONS = {
     "phase_corps_assemble": "content assembled",
     "phase_lecture_pdf": "Reading PDFs",
     "phase_redaction": "Writing the course",
+    "phase_sujet": "Rewriting the assignment",
+    "phase_preparation_cours": "Preparing the course",
+    "phase_preparation_sujet": "Preparing the assignment",
+    "phase_pdf": "Laying out the PDF",
+    "phase_supports": "Generating study materials",
+    "phase_termine": "Done",
     "phase_autres_fichiers": "other file(s)",
     "unite_mots": "words",
     "pret": "ready",
@@ -829,6 +849,7 @@ const ICONES = {
   '.jpg': ['image', 'text-primary'], '.jpeg': ['image', 'text-primary'],
   '.png': ['image', 'text-primary'], '.webp': ['image', 'text-primary'],
   '.gif': ['image', 'text-primary'], '.bmp': ['image', 'text-primary'],
+  '.url': ['link', 'text-primary'],
 };
 
 // Capture avant toute mutation : rafraichir() s'en sert pour remettre le
@@ -842,6 +863,9 @@ const etat = {
   transcripteur: null, fournisseurs: {}, cleOuverte: null,
   pdf: null, flux: null, enCours: false, exercicesPrets: false,
   langue: 'en',
+  // Au demarrage, les fichiers affiches sont ceux du cours sans nom : ce sont
+  // eux qui doivent suivre quand on le nomme (cf. changerIdentite).
+  origine: { matiere: '', type: 'CM', titre: '' },
 };
 
 // Un texte de l'interface dans la langue courante. Tout ce que le JS ecrit
@@ -1100,6 +1124,28 @@ async function chargerMoteurs() {
 
 // ------------------------------------------------------------------- statut
 
+// Matiere, type et titre nomment le dossier des sources : en changer affichait
+// un dossier vide, et les fichiers deposes avant de nommer le cours etaient a
+// redeposer. etat.origine retient ou vivent les fichiers du brouillon, et
+// /api/sources/suivre les deplace vers le nom courant. Les appels passent en
+// file : deux frappes rapprochees dans le titre ne doivent pas deplacer les
+// fichiers dans le desordre, ni perdre la trace de leur dossier.
+let fileIdentite = Promise.resolve();
+const identite = () => ({ matiere: etat.matiere, type: etat.type, titre: etat.titre });
+
+function changerIdentite() {
+  fileIdentite = fileIdentite
+    .then(async () => {
+      if (etat.enCours) return;   // generator.py lit ces fichiers en ce moment
+      const r = await poster('/api/sources/suivre', { de: etat.origine, vers: identite() });
+      etat.origine = r.origine;
+    })
+    .catch((e) => console.warn('sources non deplacees :', e))
+    .then(rafraichir)
+    .catch((e) => console.warn('rafraichir :', e));
+  return fileIdentite;
+}
+
 async function rafraichir() {
   const s = await poster('/api/status', {
     matiere: etat.matiere, type: etat.type, titre: etat.titre, moteur: etat.moteur,
@@ -1152,9 +1198,6 @@ async function rafraichir() {
   // Cacher le bouton "Ouvrir le cours" car il pointe vers l'ancien cours
   const btnOuvrir = $('btn-ouvrir-cours');
   if (btnOuvrir) btnOuvrir.classList.add('hidden');
-
-  // Vérifier si le cours existe déjà pour adapter l'option "Cours principal"
-  await verifierCoursExistant();
 
   // L'etat tient sur la ligne de titre. La raison d'un moteur non configure est
   // ce qu'on a besoin de lire : elle passe en clair, pas derriere un generique
@@ -1256,6 +1299,14 @@ const GABARITS_PHASE = [
   [/^Lecture des PDF$/, () => T('phase_lecture_pdf')],
   [/^Redaction du cours(\s+\((\d+) mots\))?$/, (m) =>
     m[2] ? `${T('phase_redaction')}  (${m[2]} ${T('unite_mots')})` : T('phase_redaction')],
+  [/^Reecriture du sujet(\s+\((\d+) mots\))?$/, (m) =>
+    m[2] ? `${T('phase_sujet')}  (${m[2]} ${T('unite_mots')})` : T('phase_sujet')],
+  // Etapes annoncees par app.py lui-meme, autour de generator.py
+  [/^Préparation du cours$/, () => T('phase_preparation_cours')],
+  [/^Préparation du sujet$/, () => T('phase_preparation_sujet')],
+  [/^Mise en page du PDF$/, () => T('phase_pdf')],
+  [/^Génération des supports$/, () => T('phase_supports')],
+  [/^Terminé$/, () => T('phase_termine')],
   [/^(.+) : (\d+) mots$/, (m) => `${m[1]} : ${m[2]} ${T('unite_mots')}`],
 ];
 const traduirePhase = (texte) => {
@@ -1324,7 +1375,7 @@ async function genererComplet(options) {
   
   // Déterminer quel événement final attendre
   const attendCours = options.generer_cours;
-  const attendSupports = options.generer_tp || options.generer_fiche;
+  const attendSupports = options.generer_tp || options.generer_fiche || options.generer_sujet;
   const evenementFinal = attendCours ? 'fini' : 'supports';
   
   suivreProgression(evenementFinal, (d) => {
@@ -1353,10 +1404,14 @@ async function genererComplet(options) {
       generer_cours: options.generer_cours,
       generer_tp: options.generer_tp,
       generer_fiche: options.generer_fiche,
+      generer_sujet: options.generer_sujet,
       niveau: options.niveau,
       tp_focus: options.tp_focus,
       tp_questions: options.tp_questions,
     });
+    // Ces fichiers sont desormais ceux du cours lance : renommer ensuite pour
+    // preparer le suivant ne doit pas les emporter (cf. changerIdentite).
+    etat.origine = null;
   } catch (err) {
     etat.flux.close();
     echouer(err.message);
@@ -1632,19 +1687,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else {
       etat.matiere = e.target.value;
     }
-    rafraichir();
+    changerIdentite();
   });
 
   $('chapter-title').addEventListener('input', (e) => {
     etat.titre = e.target.value;
-    rafraichir();
+    changerIdentite();
   });
 
   document.querySelectorAll('input[name="session_type"]').forEach((r) => {
     r.addEventListener('change', (e) => {
       if (!e.target.checked) return;
       etat.type = e.target.value.toUpperCase();
-      rafraichir();
+      changerIdentite();
     });
   });
 
@@ -1691,6 +1746,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     rafraichir();
   });
 
+  // Plusieurs liens colles d'un coup (separes par des espaces) partent un par
+  // un. Chaque lien enregistre quitte le champ : sur un lien invalide, il ne
+  // reste que lui et les suivants a corriger, sans doublon au nouvel essai.
+  const ajouterLiens = async () => {
+    const adresses = $('lien-url').value.split(/\s+/).filter(Boolean);
+    if (!adresses.length) return;
+    try {
+      for (const [i, url] of adresses.entries()) {
+        await poster('/api/liens', { matiere: etat.matiere, type: etat.type, titre: etat.titre, url });
+        $('lien-url').value = adresses.slice(i + 1).join(' ');
+      }
+    } catch (e) {
+      alert(e.message);
+    }
+    rafraichir();
+  };
+  $('btn-lien').addEventListener('click', ajouterLiens);
+  $('lien-url').addEventListener('keydown', (e) => e.key === 'Enter' && ajouterLiens());
+
   // Le cours part chez un fournisseur d'IA dans les deux cas : le meme
   // avertissement doit donc preceder la generation comme les exercices.
   const demanderAccord = (action) => {
@@ -1716,6 +1790,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     { id: 'generer_cours', labelKey: 'cours_principal', descKey: 'desc_cours', icon: 'auto_awesome' },
     { id: 'generer_tp', labelKey: 'tp_interactif', descKey: 'desc_tp', icon: 'fitness_center' },
     { id: 'generer_fiche', labelKey: 'fiche_revision', descKey: 'desc_fiche', icon: 'summarize' },
+    { id: 'generer_sujet', labelKey: 'sujet_retravaille', descKey: 'desc_sujet', icon: 'edit_note' },
   ];
 
   function renderGenererOptions() {
@@ -1760,6 +1835,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       generer_cours: $('generer_cours').checked,
       generer_tp: $('generer_tp').checked,
       generer_fiche: $('generer_fiche').checked,
+      generer_sujet: $('generer_sujet').checked,
       niveau: genererNiveauInput.value.trim() || 'comme le cours',
       // Vides : tout le cours, 5 questions de plus en plus dures (defaut cote
       // exercices.py -- le 0 dit "ne passe pas d'option").
@@ -1774,7 +1850,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const options = recupererOptionsGenerer();
     
     // Vérifier qu'au moins une option est cochée
-    if (!options.generer_cours && !options.generer_tp && !options.generer_fiche) {
+    if (!options.generer_cours && !options.generer_tp && !options.generer_fiche && !options.generer_sujet) {
       alert('Choisis au moins une option à générer.');
       return;
     }
