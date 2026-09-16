@@ -1975,6 +1975,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (r?.ok && r.destination) $('settings-output-path').value = r.destination;
   });
 
+  // Sauvegarder la destination saisie manuellement
+  $('settings-output-path')?.addEventListener('change', async (e) => {
+    const val = e.target.value.trim();
+    if (val) {
+      const r = await poster('/api/definir_destination', { destination: val })
+        .catch((e) => { console.warn('definir_destination :', e); return null; });
+      if (r?.ok && r.destination) e.target.value = r.destination;
+    }
+  });
+
   // Onglets Paramètres : Général / API & Moteurs / Journal partagent le meme
   // panneau, un seul <section> visible a la fois.
   document.querySelectorAll('.parametres-onglet').forEach((onglet) => {

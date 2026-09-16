@@ -928,6 +928,20 @@ def api_choisir_destination():
     engine.choisir_destination(Path(resultat[0]))
     return jsonify({"ok": True, "destination": str(engine.destination_courante())})
 
+@app.route("/api/definir_destination", methods=["POST"])
+def api_definir_destination():
+    """Definit manuellement le dossier de sortie depuis le champ texte."""
+    data = request.json
+    chemin = data.get("destination", "").strip()
+    if chemin:
+        try:
+            engine.choisir_destination(Path(chemin))
+            return jsonify({"ok": True, "destination": str(engine.destination_courante())})
+        except Exception as e:
+            logger.warning("Erreur en definissant la destination manuelle : %s", e)
+            return jsonify({"ok": False, "erreur": str(e)}), 400
+    return jsonify({"ok": False, "erreur": "Chemin vide."}), 400
+
 
 @app.route("/api/obsidian_installe", methods=["GET"])
 def api_obsidian_installe():
