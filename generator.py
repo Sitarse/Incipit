@@ -56,7 +56,7 @@ LANGUES_APP = {
     "he": "עברית", "th": "ไทย", "vi": "Tiếng Việt", "id": "Bahasa Indonesia",
 }
 
-SKILL = Path.home() / ".claude" / "skills" / "cours" / "SKILL.md"
+SKILL = Path(__file__).resolve().parent / "config" / "methode_cours.md"
 URL_NIM = "https://integrate.api.nvidia.com/v1/chat/completions"
 URL_NIM_MODELES = "https://integrate.api.nvidia.com/v1/models"
 URL_GEMINI = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions"
@@ -671,9 +671,10 @@ TRANSCRIPTEURS = {
     "nemotron-omni": Transcripteur("NVIDIA Nemotron Omni  ·  recommande", "nim",
                                    "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning"),
     "kimi-k3":       Transcripteur("NVIDIA Kimi K3", "nim", "moonshotai/kimi-k3"),
-    # Gemini n'est plus propose : il est debranche (cf. ORDRE_GRATUIT), donc le
-    # choisir reclamait une cle pour un fournisseur muet -- et transcrire()
-    # arrete tout des qu'une photo echoue. Le remettre ici le jour ou il revient.
+    # Gemini reste debranche de la redaction (cf. ORDRE_GRATUIT, mesure du 4
+    # sept) mais une cle Gemini enregistree doit servir a quelque chose : elle
+    # choisit son propre transcripteur ici, sans toucher au moteur de redaction.
+    "gemini":        Transcripteur("Google Gemini", "gemini", FOURNISSEURS["gemini"].modele),
     "ocr":           Transcripteur("NVIDIA Nemotron OCR v2  ·  texte imprime", "ocr",
                                    "nvidia/nemotron-ocr-v2"),
 }

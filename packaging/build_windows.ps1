@@ -31,6 +31,7 @@ uv run --with pyinstaller --with flask --with pywebview pyinstaller app.py `
     --add-data "$racine\md2pdf.py;." `
     --add-data "$racine\exercices.py;." `
     --add-data "$racine\config\keys.env.example;config" `
+    --add-data "$racine\config\methode_cours.md;config" `
     --add-binary "$racine\$uvBundle;."
 
 Write-Host "`nOK : dist\Incipit\Incipit.exe"

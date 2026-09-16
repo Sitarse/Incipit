@@ -487,6 +487,19 @@ const UI_TRADUCTIONS = {
     "longueur_desc_html": "Chaque cours vise <strong class=\"text-on-surface\">6 500 mots</strong> au maximum, toutes sections comprises : au-delà, un cours devient long à lire et à corriger pour un gain de fond marginal.",
     "lancer_piston_html": "Lancer Piston : <code class=\"bg-[#2d2d2d] px-1 py-0.5 rounded text-xs font-code\">docker run -d -p 2000:2000 ghcr.io/engineer-man/piston</code>",
     "demarrage": "Démarrage…",
+    // Libellés d'étape au-dessus de la barre de progression (cf. traduirePhase) :
+    // le seul sous-ensemble traduisible des messages de generator.py, un
+    // ensemble fixe. Le journal détaillé en dessous reste en français -- texte
+    // libre trop interpolé (noms de fichiers, erreurs) pour se traduire sans
+    // casser les self-tests d'engine.py qui vérifient generator.py mot pour mot.
+    "phase_transcription_photos": "Transcription des photos",
+    "phase_plan": "Plan du cours",
+    "phase_sections_ecrites": "sections écrites",
+    "phase_corps_assemble": "corps assemblé",
+    "phase_lecture_pdf": "Lecture des PDF",
+    "phase_redaction": "Rédaction du cours",
+    "phase_autres_fichiers": "autre(s) fichier(s)",
+    "unite_mots": "mots",
     "pret": "prêt",
     "moteur": "Moteur",
     "cours_ecrits_dans": "Les cours sont écrits dans",
@@ -729,6 +742,14 @@ const UI_TRADUCTIONS = {
     "longueur_desc_html": "Each course targets <strong class=\"text-on-surface\">6,500 words</strong> maximum, all sections included: beyond that, a course becomes long to read and correct for marginal gain.",
     "lancer_piston_html": "Run Piston: <code class=\"bg-[#2d2d2d] px-1 py-0.5 rounded text-xs font-code\">docker run -d -p 2000:2000 ghcr.io/engineer-man/piston</code>",
     "demarrage": "Starting…",
+    "phase_transcription_photos": "Transcribing photos",
+    "phase_plan": "Course outline",
+    "phase_sections_ecrites": "sections written",
+    "phase_corps_assemble": "content assembled",
+    "phase_lecture_pdf": "Reading PDFs",
+    "phase_redaction": "Writing the course",
+    "phase_autres_fichiers": "other file(s)",
+    "unite_mots": "words",
     "pret": "ready",
     "moteur": "Engine",
     "cours_ecrits_dans": "Courses are written to",
@@ -1220,6 +1241,31 @@ function echouer(message) {
   $('btn-generer').disabled = false;
 }
 
+// Les libelles d'etape que generator.py ecrit sont en francais (cf. dire()) :
+// un ensemble fixe de gabarits, chacun reconnu ici et reconstruit avec sa
+// traduction (cf. les cles phase_* de UI_TRADUCTIONS) autour des parties
+// numeriques, qui n'ont pas besoin de traduction. Un libelle non reconnu
+// (nouvelle etape ajoutee cote generator.py, pas encore mappee ici) s'affiche
+// tel quel plutot que de planter.
+const GABARITS_PHASE = [
+  [/^Transcription des photos(\s+\(\d+\/\d+\))$/, (m) => T('phase_transcription_photos') + m[1]],
+  [/^Plan du cours$/, () => T('phase_plan')],
+  [/^(\d+\/\d+) sections ecrites$/, (m) => `${m[1]} ${T('phase_sections_ecrites')}`],
+  [/^corps assemble : (\d+) mots$/, (m) => `${T('phase_corps_assemble')} : ${m[1]} ${T('unite_mots')}`],
+  [/^(\d+ photo\(s\), \d+ PDF, )(\d+) autre\(s\) fichier\(s\)$/, (m) => `${m[1]}${m[2]} ${T('phase_autres_fichiers')}`],
+  [/^Lecture des PDF$/, () => T('phase_lecture_pdf')],
+  [/^Redaction du cours(\s+\((\d+) mots\))?$/, (m) =>
+    m[2] ? `${T('phase_redaction')}  (${m[2]} ${T('unite_mots')})` : T('phase_redaction')],
+  [/^(.+) : (\d+) mots$/, (m) => `${m[1]} : ${m[2]} ${T('unite_mots')}`],
+];
+const traduirePhase = (texte) => {
+  for (const [regex, rendu] of GABARITS_PHASE) {
+    const m = texte.match(regex);
+    if (m) return rendu(m);
+  }
+  return texte;
+};
+
 // Le flux d'avancement s'ouvre avant de lancer : ouvert apres, les premieres
 // etapes seraient deja passees et la barre resterait a zero. Avancement et
 // erreurs se lisent pareil pour les deux boutons -- seul l'evenement de fin
@@ -1229,7 +1275,7 @@ function suivreProgression(evenementFinal, surFin) {
   etat.flux = new EventSource('/api/progression');
   etat.flux.addEventListener('phase', (e) => {
     const d = JSON.parse(e.data);
-    $('progres-texte').textContent = d.texte;
+    $('progres-texte').textContent = traduirePhase(d.texte);
     $('progres-pct').textContent = `${d.pct}%`;
     $('progres-barre').style.width = `${d.pct}%`;
   });
@@ -1258,7 +1304,7 @@ function demarrerBarre(texte) {
 
 async function generer() {
   etat.pdf = null;
-  demarrerBarre('Démarrage…');
+  demarrerBarre(T('demarrage'));
   suivreProgression('fini', (d) => terminer(d.pdf));
 
   try {
@@ -1274,7 +1320,7 @@ async function generer() {
 
 async function genererComplet(options) {
   etat.pdf = null;
-  demarrerBarre('Démarrage…');
+  demarrerBarre(T('demarrage'));
   
   // Déterminer quel événement final attendre
   const attendCours = options.generer_cours;
@@ -1776,6 +1822,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   $('btn-reafficher-confidentialite')?.addEventListener('click', () => {
     masquerMessage(CLE_CONFIDENTIALITE, false);
+    // Continuer ne doit pas lancer une generation depuis les reglages : a la
+    // difference du declenchement normal, ici on veut juste relire le texte.
+    etat.apresAccord = () => {};
+    $('modal-confidentialite').classList.remove('hidden');
   });
 
   $('btn-tutoriel-fermer').addEventListener('click', () => {
@@ -1842,9 +1892,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   montrer('vue-cours');
 
-  // Open destination folder from settings
-  $('btn-browse-folder')?.addEventListener('click', () => {
-    poster('/api/ouvrir_destination', {}).catch((e) => console.warn('ouvrir_destination :', e));
+  // Choisir un nouveau dossier de sortie depuis les reglages
+  $('btn-browse-folder')?.addEventListener('click', async () => {
+    const r = await poster('/api/choisir_destination', {})
+      .catch((e) => { console.warn('choisir_destination :', e); return null; });
+    if (r?.ok && r.destination) $('settings-output-path').value = r.destination;
   });
 
   // Onglets Paramètres : Général / API & Moteurs / Journal partagent le meme

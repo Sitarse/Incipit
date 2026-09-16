@@ -840,6 +840,25 @@ def api_ouvrir_destination():
     return jsonify({"ok": True})
 
 
+@app.route("/api/choisir_destination", methods=["POST"])
+def api_choisir_destination():
+    """Ouvre un selecteur de dossier natif et change la destination si
+    l'utilisateur y choisit un dossier. Sans fenetre native (mode navigateur),
+    il n'y a pas de dialogue systeme possible : on le signale plutot que de
+    faire semblant."""
+    try:
+        import webview
+        resultat = webview.windows[0].create_file_dialog(
+            webview.FOLDER_DIALOG, directory=str(engine.destination_courante()))
+    except Exception as e:
+        logger.warning("Selecteur de dossier indisponible : %s", e)
+        return jsonify({"ok": False, "erreur": "Selecteur de dossier indisponible."}), 200
+    if not resultat:      # dialogue annule
+        return jsonify({"ok": False}), 200
+    engine.choisir_destination(Path(resultat[0]))
+    return jsonify({"ok": True, "destination": str(engine.destination_courante())})
+
+
 @app.route("/api/obsidian_installe", methods=["GET"])
 def api_obsidian_installe():
     """Renvoie si Obsidian est installé sur ce PC."""
