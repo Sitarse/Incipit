@@ -89,6 +89,8 @@ MOTEURS = {
                          "Claude Opus 5 - version payante (abonnement Claude Code)"),
     "gratuit": Moteur(None, None,
                       "NVIDIA NIM - version gratuite, modele au choix, cle perso"),
+    "gemini": Moteur("gemini-2.5-flash", "GEMINI_API_KEY",
+                     "Google Gemini - version gratuite, modele au choix, cle perso"),
 }
 DEFAUT = "claude-cli"    # le meilleur, quand l'abonnement est disponible
 
@@ -2062,7 +2064,7 @@ def _self_test() -> None:
     assert etapes == sorted(etapes) and etapes[0] == PHOTO_DEBUT and etapes[-1] < PHOTO_FIN
 
     assert DEFAUT in MOTEURS
-    assert set(MOTEURS) == {"claude-cli", "gratuit"}
+    assert set(MOTEURS) == {"claude-cli", "gratuit", "gemini"}
     # les deux fournisseurs restent implementes (repli si NVIDIA tombe),
     # meme si ORDRE_GRATUIT n'en essaie qu'un seul par defaut
     assert set(FOURNISSEURS) == {"gemini", "nim"}

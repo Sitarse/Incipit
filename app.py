@@ -717,11 +717,13 @@ def api_moteurs():
     for code, m in MOTEURS.items():
         nom, _, sous_titre = m.libelle.partition(" - ")
         if code == "gratuit":
-            # La version gratuite redige sur NIM (cf. ORDRE_GRATUIT) : c'est son
-            # catalogue que l'on propose. Liste statique, aucun appel reseau au
-            # demarrage -- catalogue_nim() est reserve a une demande explicite.
-            fournisseur = generator.ORDRE_GRATUIT[0]
+            # La version gratuite redige sur NIM par defaut.
+            fournisseur = "nim"
             modeles = list(generator.PREFERENCE_NIM)
+            actuel = engine.modele_courant(fournisseur)
+        elif code == "gemini":
+            fournisseur = "gemini"
+            modeles = list(generator.PREFERENCE_GEMINI)
             actuel = engine.modele_courant(fournisseur)
         else:
             fournisseur = None            # claude-cli passe par l'abonnement
