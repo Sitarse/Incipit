@@ -42,6 +42,7 @@ jobs:
             --add-data "${{ github.workspace }}\md2pdf.py;." `
             --add-data "${{ github.workspace }}\exercices.py;." `
             --add-data "${{ github.workspace }}\config\keys.env.example;config" `
+            --add-data "${{ github.workspace }}\config\methode_cours.md;config" `
             --add-binary "${{ github.workspace }}\packaging\vendor\windows\uv.exe;."
 
       - name: Zip Windows artifact
@@ -139,6 +140,7 @@ jobs:
             --add-data "${{ github.workspace }}/md2pdf.py:." \
             --add-data "${{ github.workspace }}/exercices.py:." \
             --add-data "${{ github.workspace }}/config/keys.env.example:config" \
+            --add-data "${{ github.workspace }}/config/methode_cours.md:config" \
             --add-binary "${{ github.workspace }}/packaging/vendor/macos/uv:."
 
       - name: Sign and zip macOS artifact
