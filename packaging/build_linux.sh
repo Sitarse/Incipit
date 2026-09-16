@@ -63,6 +63,17 @@ DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 # du bundle a la place de celles du systeme et echouent sans un mot.
 export LD_LIBRARY_PATH_ORIG="${LD_LIBRARY_PATH-}"
 export LD_LIBRARY_PATH="$DIR${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+
+# Compatibilite maximale pour les VM et distributions recentes :
+# - Force le backend Qt (au lieu de GTK)
+# - Desactive le bac a sable (qui bloque sur les noyaux sans unprivileged userns)
+# - Desactive l'acceleration 3D (qui fige regulierement sous VirtualBox)
+# - Force X11/XWayland (Wayland natif pose souvent probleme avec PyQt6)
+export PYWEBVIEW_GUI=qt
+export QTWEBENGINE_DISABLE_SANDBOX=1
+export QTWEBENGINE_CHROMIUM_FLAGS="--no-sandbox --disable-gpu --disable-software-rasterizer"
+export QT_QPA_PLATFORM=xcb
+
 exec "$DIR/Incipit" "$@"
 EOF
 chmod +x dist/Incipit/Incipit.sh
