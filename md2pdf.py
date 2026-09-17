@@ -206,8 +206,13 @@ def resoudre_images(texte: str, source: Path) -> str:
     titres = _titres(texte)
     vocab = termes_vocabulaire(texte)
     deja: set[str] = set()   # porte l'ancre de retour d'une pastille a l'autre
-    return re.sub(r"(?<!!)(\*{0,2})\[\[#?([^\]|]+)(?:\|([^\]]+))?\]\]\1",
+    texte = re.sub(r"(?<!!)(\*{0,2})\[\[#?([^\]|]+)(?:\|([^\]]+))?\]\]\1",
                   lambda m: _lien_interne(m.group(1), m.group(2), m.group(3),
+                                          titres, vocab, deja),
+                  texte)
+    # liens Markdown standards [texte](#heading) -> ancres HTML cliquables (Gemini, etc.)
+    return re.sub(r"(?<!!)(\*{0,2})\[([^\]]+)\]\(#([^\)]+)\)\1",
+                  lambda m: _lien_interne(m.group(1), m.group(3), m.group(2),
                                           titres, vocab, deja),
                   texte)
 
@@ -765,6 +770,10 @@ def _self_test() -> None:
         # terme absent du tableau : on retombe sur la section, pas de lien mort
         absent = resoudre_images("[[#Vocabulaire à retenir|inconnu]]\n\n" + doc, src)
         assert 'href="#vocabulaire-a-retenir"' in absent, absent
+
+        # test lien Markdown standard (ex: Gemini)
+        std_md = resoudre_images("Le [oracle de test](#vocabulaire-a-retenir) blabla\n\n" + doc, src)
+        assert 'href="#voc-oracle-de-test"' in std_md, std_md
 
         # le trajet retour : seule la 1re pastille porte l'ancre, sinon le
         # tableau renverrait toujours sur elle quel que soit le clic d'origine
