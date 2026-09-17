@@ -1070,26 +1070,30 @@ def main() -> None:
 
     try:
         import webview
-    except ImportError:
-        # Sans pywebview, l'application reste utilisable dans le navigateur
-        # plutot que de ne pas demarrer du tout.
-        import webbrowser
-        webbrowser.open(url)
-        threading.Event().wait()
-        return
 
-    # 1180 : la barre laterale (260) plus la colonne centrale de la maquette
-    # (max-w-4xl, 896) et ses marges tiennent sans rogner ni faire defiler,
-    # sans la largeur excedentaire d'un ecran large qui allongeait la fenetre.
-    # 1040 : un peu d'air sous les 963px de vue repliee, tout en restant sous
-    # les 1032px utiles d'un ecran 1080p barre des taches comprise.
-    webview.create_window('Incipit', url, width=1180, height=1040,
-                          min_size=(900, 620), background_color="#1e1e1e")
-    # private_mode=True par defaut : le profil webview (cookies, cache) serait
-    # jete a chaque fermeture. storage_path le rend persistant, sous logs/ qui
-    # est deja hors-suivi git et cree par configurer_logs().
-    webview.start(icon=str(engine.ICI / "frontend" / "logo.ico"),
-                 private_mode=False, storage_path=str(DOSSIER_LOGS / "webview"))
+        # 1180 : la barre laterale (260) plus la colonne centrale de la
+        # maquette (max-w-4xl, 896) et ses marges tiennent sans rogner ni
+        # faire defiler, sans la largeur excedentaire d'un ecran large qui
+        # allongeait la fenetre. 1040 : un peu d'air sous les 963px de vue
+        # repliee, tout en restant sous les 1032px utiles d'un ecran 1080p
+        # barre des taches comprise.
+        webview.create_window('Incipit', url, width=1180, height=1040,
+                              min_size=(900, 620), background_color="#1e1e1e")
+        # private_mode=True par defaut : le profil webview (cookies, cache)
+        # serait jete a chaque fermeture. storage_path le rend persistant,
+        # sous logs/ qui est deja hors-suivi git et cree par configurer_logs().
+        webview.start(icon=str(engine.ICI / "frontend" / "logo.ico"),
+                     private_mode=False, storage_path=str(DOSSIER_LOGS / "webview"))
+        return
+    except Exception:
+        # Sans pywebview, ou si son backend natif (souvent pythonnet/.NET
+        # sous Windows) ne charge pas sur cette machine, l'application reste
+        # utilisable dans le navigateur plutot que de ne pas demarrer du tout.
+        logger.exception("Fenetre native indisponible, bascule navigateur")
+
+    import webbrowser
+    webbrowser.open(url)
+    threading.Event().wait()
 
 
 def _self_test() -> None:
