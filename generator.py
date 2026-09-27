@@ -1184,7 +1184,33 @@ def transcrire(moteur: str, modele: str | None, cle: str | None, photos: list[Pa
 
 # -------------------------------------------------------------------- prompt
 
-def consigne_systeme(langue: str = "fr", sujet: bool = False) -> str:
+# Ce que la methode dit du cours entier et qu'une section seule n'a pas a lire :
+# lire les fichiers (elle recoit le texte), l'en-tete YAML et les sections de fin
+# (ecrits ailleurs), et le calibrage de longueur, que la cible chiffree de chaque
+# section remplace -- ses « 200 a 400 mots » la contredisaient. Renvoye a chaque
+# section, ca coutait ~1300 jetons x 15 appels.
+HORS_SECTION = ("## Entrée", "### 1. Inventaire", "### 2. Lecture",
+                "### 3. Extraire", "### 5. Calibrer", "#### Fin de document",
+                "### 9. Sortie")
+
+
+def sans_titres(md: str, titres: tuple[str, ...]) -> str:
+    """Retire chaque titre de `titres` avec tout ce qu'il couvre, jusqu'au
+    prochain titre de meme niveau ou plus haut."""
+    garde, coupe = [], 0          # coupe : niveau du titre retire, 0 = on garde
+    for ligne in md.splitlines():
+        niveau = len(ligne) - len(ligne.lstrip("#")) if ligne.startswith("#") else 0
+        if niveau and coupe and niveau <= coupe:
+            coupe = 0
+        if niveau and ligne.startswith(titres):
+            coupe = niveau
+        if not coupe:
+            garde.append(ligne)
+    return SAUT.join(garde)
+
+
+def consigne_systeme(langue: str = "fr", sujet: bool = False,
+                     section: bool = False) -> str:
     """La skill `cours` telle quelle : c'est elle, la methode pedagogique.
 
     Elle est prise en sandwich entre la persona -- qui redige, et pour qui --
@@ -1195,12 +1221,17 @@ def consigne_systeme(langue: str = "fr", sujet: bool = False) -> str:
     `sujet` : reecrire le sujet d'exercice depose plutot que rediger le cours.
     Sa consigne se glisse apres la methode (elle en garde la forme, pas le plan)
     et avant la charte, qui prime toujours.
+
+    `section` : la version allegee pour un appel qui n'ecrit qu'une section
+    (cf. HORS_SECTION), renvoyee a chaque appel de la redaction par paquets.
     """
     if not SKILL.is_file():
         raise SystemExit(f"Methode introuvable : {SKILL}")
     corps = re.sub(r"^---\n.*?\n---\n", "", SKILL.read_text(encoding="utf-8"),
                    count=1, flags=re.S)
-    
+    if section:
+        corps = sans_titres(corps, HORS_SECTION)
+
     # Nom de la langue en français pour le prompt
     noms_langues = {
         "fr": "français", "en": "anglais", "es": "espagnol", "de": "allemand",
@@ -1221,8 +1252,11 @@ def consigne_systeme(langue: str = "fr", sujet: bool = False) -> str:
         "Applique la methode ci-dessous a la lettre.\n\n" + corps + "\n\n"
         + (CONSIGNE_SUJET + "\n\n" if sujet else "")
         + CHARTE + "\n\n"
-        "Contraintes de sortie : reponds uniquement par le contenu du fichier .md, "
-        "en-tete YAML compris. Aucun commentaire avant ou apres, aucun bloc de code "
+        + ("Contraintes de sortie : reponds uniquement par la section demandee. "
+           if section else
+           "Contraintes de sortie : reponds uniquement par le contenu du fichier .md, "
+           "en-tete YAML compris. ")
+        + "Aucun commentaire avant ou apres, aucun bloc de code "
         "englobant l'ensemble. Tu n'as pas d'outils : les sources te sont donnees "
         "en texte, ne demande a en lire aucune autre."
     )
@@ -1630,7 +1664,7 @@ def assembler_corps(taches: list[tuple[str, str | None]],
 def rediger_par_paquets(moteur, modele, cle, cle_env, systeme, base: str,
                         matiere: str, type_: str, titre: str,
                         sources: list[str], n_pdf: int, n_photos: int,
-                        n_autres: int = 0) -> str:
+                        n_autres: int = 0, systeme_section: str | None = None) -> str:
     """Le cours section par section, toutes ecrites en parallele.
 
     Le sequentiel consommait 1 a 2 requetes par minute contre un plafond de 20 :
@@ -1660,8 +1694,9 @@ def rediger_par_paquets(moteur, modele, cle, cle_env, systeme, base: str,
         cible = sous or partie
         for reste in (True, False):
             try:
-                return _demander_section(moteur, modele, cle, cle_env, systeme,
-                                         base, plan, partie, sous, vocabulaire,
+                return _demander_section(moteur, modele, cle, cle_env,
+                                         systeme_section or systeme, base, plan,
+                                         partie, sous, vocabulaire,
                                          mots_par_section, None)
             except Exception as e:
                 if reste:
@@ -1824,7 +1859,8 @@ def fabriquer(sources: Path, sortie: Path, matiere: str, type_: str, titre: str,
         md = rediger_par_paquets(
             moteur, modele, cle, cle_env, consigne_systeme(langue), base,
             matiere, type_, titre,
-            [f.name for f in fichiers], len(pdfs), len(photos), len(textes_autres))
+            [f.name for f in fichiers], len(pdfs), len(photos), len(textes_autres),
+            consigne_systeme(langue, section=True))
     else:
         md = nettoyer(repondre(
             moteur, modele, cle, consigne_systeme(langue), base,
@@ -1855,6 +1891,18 @@ def _self_test() -> None:
     for exige in ("AUCUN JARGON GRATUIT", "kLOC", "> [!tip] À retenir",
                   "> [!note] Complément", f"{VOCAB_MINI} et {VOCAB_MAXI} termes"):
         assert exige in consigne, f"charte incomplete : {exige}"
+
+    # la version section garde la forme (encadres, visuels, charte) et perd ce
+    # qui parle du cours entier : lire des fichiers, l'en-tete YAML, la fin
+    sec = consigne_systeme("fr", section=True)
+    for garde in ("### 6. Les six encadrés", "### 7. Images", "#### Liens internes",
+                  "## Règles", "CHARTE NON NEGOCIABLE", "QUI TU ES"):
+        assert garde in sec, f"section : {garde} a disparu"
+    for parti in ("## Entrée", "### 2. Lecture", "scratchpad", "#### Fin de document",
+                  "### 9. Sortie", "en-tete YAML compris"):
+        assert parti not in sec, f"section : {parti} devait sauter"
+    assert len(sec) < len(consigne) * 0.85, (len(sec), len(consigne))
+    assert "200 à 400 mots" not in sec, "la cible chiffree de la section prime"
 
     consigne_en = consigne_systeme("en")
     assert "en anglais" in consigne_en
