@@ -1089,7 +1089,10 @@ def _claude_cli(modele: str, systeme: str | None, texte: str, photo: Path | None
            "--include-partial-messages", "--verbose"]
     if photo:
         texte = f"{texte}\n\nLa photo a transcrire : {photo.resolve()}"
-        cmd += ["--allowed-tools", "Read", "--add-dir", str(photo.resolve().parent)]
+        # --tools : seul Read est charge, pas la dizaine d'autres outils du CLI
+        # et leurs descriptions, repayees a chaque photo
+        cmd += ["--tools", "Read", "--allowed-tools", "Read",
+                "--add-dir", str(photo.resolve().parent)]
     elif systeme:
         cmd += ["--system-prompt", systeme]
 
@@ -1131,6 +1134,9 @@ def transcripteur_retenu(cle_env: Path | None) -> str:
     return garde if garde in TRANSCRIPTEURS else "auto"
 
 
+CLAUDE_PHOTO = "sonnet"
+
+
 def _lire_photo(moteur, modele, cle, photo: Path, cle_env, choix: str) -> str:
     """Une photo -> son texte, par le moteur choisi dans l'interface.
 
@@ -1138,6 +1144,10 @@ def _lire_photo(moteur, modele, cle, photo: Path, cle_env, choix: str) -> str:
     cascade, y compris le quota : c'est l'interet de pouvoir en changer.
     """
     t = TRANSCRIPTEURS[choix]
+    if moteur == "claude-cli":
+        # recopier une page ne demande pas Opus ; la cle de cache garde le
+        # modele de redaction pour ne pas faire repayer les photos deja lues
+        modele = CLAUDE_PHOTO
     if t.fournisseur is None:
         return repondre(moteur, modele, cle, None, CONSIGNE_PHOTO, cle_env=cle_env,
                         photo=photo, max_jetons=MAX_JETONS_PHOTO)
