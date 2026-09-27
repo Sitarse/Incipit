@@ -1370,7 +1370,7 @@ def plan_hierarchique(brut: str) -> list[tuple[str, list[str]]]:
     for ligne in brut.splitlines():
         if not (m := re.match(r"^\s*(#{2,3})\s+(.+?)\s*$", ligne)):
             continue
-        titre = m.group(2).strip(" .*_")
+        titre = ETIQUETTE.sub("", m.group(2)).strip(" .*_")
         if not titre:
             continue
         if len(m.group(1)) == 2:
@@ -1465,9 +1465,111 @@ def nettoyer(md: str) -> str:
 
 # ------------------------------------------------------- redaction par paquets
 
-def plan_du_cours(moteur, modele, cle, cle_env,
-                  base: str) -> tuple[list[tuple[str, list[str]]], list[str]]:
-    """Premier appel : le plan a deux niveaux, et le vocabulaire du cours.
+# ------------------------------------------------- sources par partie du plan
+
+# Chaque section recevait toutes les sources : 15 sections, 15 fois le meme
+# poly. Le plan dit maintenant quelles sources nourrissent quelle partie, et
+# chaque section ne recoit que les siennes.
+GROUPE = re.compile(r"^===== (PDF|NOTES MANUSCRITES|FICHIER|PAGE WEB) : .* =====$")
+PAGE = re.compile(r"^--- page \d+ ---")
+ETIQUETTE = re.compile(r"\s*\[\s*(S\d+(?:\s*[-,–]\s*S?\d+)*)\s*\]\s*$", re.I)
+
+
+def decouper_sources(base: str) -> tuple[str, list[tuple[str, str]]]:
+    """La demande -> (en-tete, [(en-tete du groupe, unite)]).
+
+    Une unite est la plus petite source qu'une partie puisse reclamer : une page
+    de PDF, une photo, un fichier, une page web. L'en-tete du groupe (nom du
+    PDF, gabarit retire) voyage avec chaque page pour qu'elle reste lisible seule.
+
+    ponytail: decoupe sur les marqueurs de demande() ; un fichier source qui
+    contiendrait lui-meme une ligne "===== PDF : x =====" se couperait a tort.
+    """
+    entete, unites = [], []
+    groupe, pdf, courante = None, False, None
+    for ligne in base.split(SAUT):
+        if GROUPE.match(ligne):
+            if courante is not None:
+                unites.append((groupe, SAUT.join(courante).strip(SAUT)))
+            groupe, pdf = ligne, ligne.startswith("===== PDF")
+            courante = None if pdf else []
+        elif groupe is None:
+            entete.append(ligne)
+        elif pdf and PAGE.match(ligne):
+            if courante is not None:
+                unites.append((groupe, SAUT.join(courante).strip(SAUT)))
+            courante = [ligne]
+        elif courante is None:            # PDF avant sa premiere page : gabarit
+            groupe += SAUT + ligne
+        else:
+            courante.append(ligne)
+    if courante is not None:
+        unites.append((groupe, SAUT.join(courante).strip(SAUT)))
+    return SAUT.join(entete).rstrip(), unites
+
+
+def recoudre(entete: str, unites: list[tuple[str, str]],
+             garder: set[int] | None = None, numeros: bool = False) -> str:
+    """L'inverse de decouper_sources, limite aux unites `garder` (1-based).
+    `numeros` prefixe chaque unite de son [S#] : c'est ce que le plan cite."""
+    morceaux, dernier = [entete], None
+    for i, (groupe, texte) in enumerate(unites, 1):
+        if garder is not None and i not in garder:
+            continue
+        morceaux += ["", groupe.strip(SAUT)] if groupe != dernier else [""]
+        dernier = groupe
+        morceaux.append(f"[S{i}] {texte}" if numeros else texte)
+    return SAUT.join(morceaux)
+
+
+def numeros(etiquette: str) -> set[int]:
+    """"S1-S4, S9" -> {1, 2, 3, 4, 9}."""
+    ids = set()
+    for bout in re.split(r"\s*,\s*", etiquette):
+        if m := re.match(r"S?(\d+)(?:\s*[-–]\s*S?(\d+))?$", bout.strip(), re.I):
+            debut = int(m.group(1))
+            ids.update(range(debut, int(m.group(2) or debut) + 1))
+    return ids
+
+
+def sources_du_plan(brut: str) -> dict[str, set[int]]:
+    """Titre de partie (en minuscules) -> numeros des sources qu'elle couvre."""
+    refs = {}
+    for ligne in brut.splitlines():
+        if (m := re.match(r"^\s*##\s+(.+?)\s*$", ligne)) and (e := ETIQUETTE.search(m.group(1))):
+            titre = ETIQUETTE.sub("", m.group(1)).strip(" .*_").lower()
+            refs[titre] = refs.get(titre, set()) | numeros(e.group(1))
+    return refs
+
+
+def sources_par_partie(plan: list[tuple[str, list[str]]], refs: dict[str, set[int]],
+                       n: int) -> dict[str, set[int] | None]:
+    """Les sources de chaque partie. None = toutes : une partie que le plan n'a pas
+    etiquetee les recoit toutes, plutot que d'ecrire a vide.
+
+    Rien ne se perd : une source que le plan n'a citee nulle part rejoint la
+    partie qui cite sa voisine d'avant (dans l'ordre du prof, elle continue
+    la meme notion), ou la premiere partie si elle ouvre le cours.
+    """
+    parts = {p: {i for i in refs.get(p.lower(), set()) if 1 <= i <= n} or None
+             for p, _ in plan}
+    etiquetees = [p for p, _ in plan if parts[p]]
+    if not etiquetees:
+        return {p: None for p, _ in plan}
+    for i in range(1, n + 1):
+        if any(i in parts[p] for p in etiquetees):
+            continue
+        avant = [p for p in etiquetees if min(parts[p]) < i]
+        hote = max(avant, key=lambda p: max(j for j in parts[p] if j < i)) \
+            if avant else etiquetees[0]
+        parts[hote].add(i)
+    return parts
+
+
+def plan_du_cours(moteur, modele, cle, cle_env, base: str, numerote: bool = False
+                  ) -> tuple[list[tuple[str, list[str]]], list[str], dict[str, set[int]]]:
+    """Premier appel : le plan a deux niveaux, le vocabulaire du cours et, si
+    `numerote` (les sources portent leur [S#]), les sources de chaque partie.
 
     Le plan sert de carte a chaque section pour qu'aucune ne deborde sur sa
     voisine. Le vocabulaire est decide ici parce que les sections s'ecrivent
@@ -1481,6 +1583,9 @@ def plan_du_cours(moteur, modele, cle, cle_env,
         "sous la forme `### 1.1 Titre`. Suis l'ordre du prof et reprends ses "
         "intitules. N'inclus PAS les sections de fin (Vocabulaire, Recap, "
         "Auto-test, Sources).",
+        *(["Au bout de chaque ligne `##`, entre crochets, les numeros des "
+           "sources qu'elle couvre : `## 1. Titre [S1-S4, S9]`. Chaque source "
+           "[S#] doit etre citee par au moins une partie."] if numerote else []),
         "Les titres annoncent ce qu'on y apprend : l'etudiant qui rouvre ce "
         "cours dans trois mois doit retrouver une notion en lisant le plan, "
         "sans ouvrir les parties. Evite « Generalites », « Introduction », "
@@ -1501,12 +1606,12 @@ def plan_du_cours(moteur, modele, cle, cle_env,
                         max_jetons=MAX_JETONS_PLAN)
     except (RuntimeError, urllib.error.URLError) as e:
         dire(f"plan indisponible ({e})")
-        return [], []
+        return [], [], {}
     plan = plan_hierarchique(brut)
     if len(plan) < PARTIES_MINI:
         dire(f"plan inexploitable, {len(plan)} partie(s) reconnue(s)")
-        return [], []
-    return plan, vocabulaire_du_plan(brut)
+        return [], [], {}
+    return plan, vocabulaire_du_plan(brut), sources_du_plan(brut)
 
 
 def _plan_en_texte(plan: list[tuple[str, list[str]]]) -> list[str]:
@@ -1689,12 +1794,15 @@ def rediger_par_paquets(moteur, modele, cle, cle_env, systeme, base: str,
     Le sequentiel consommait 1 a 2 requetes par minute contre un plafond de 20 :
     le temps perdu n'etait pas du quota, c'etait la file indienne.
 
-    ponytail: les sources repartent en entier a chaque appel. C'est le plus simple
-    et ca tient dans les quotas mesures ; si ca coince, le plan sait quelles pages
-    alimentent quelle section et permettrait de n'envoyer que celles-la.
+    Chaque section ne recoit que les sources de sa partie (cf.
+    sources_par_partie) : les renvoyer toutes a chaque appel faisait l'essentiel
+    des jetons d'un cours, et du quota gratuit.
     """
     dire("Plan du cours", REDACTION_DEBUT)
-    plan, vocabulaire = plan_du_cours(moteur, modele, cle, cle_env, base)
+    entete, unites = decouper_sources(base)
+    plan, vocabulaire, refs = plan_du_cours(
+        moteur, modele, cle, cle_env,
+        recoudre(entete, unites, numeros=True) if unites else base, bool(unites))
     if not plan:
         # sans plan, pas de sections : mieux vaut un cours en un appel qu'aucun cours
         dire("retour a la redaction en un seul appel")
@@ -1705,6 +1813,12 @@ def rediger_par_paquets(moteur, modele, cle, cle_env, systeme, base: str,
     dire(f"{len(plan)} parties, {len(taches)} sections, "
          f"{len(vocabulaire)} termes au vocabulaire, ~{mots_par_section} mots/section")
     dire(" | ".join(partie for partie, _ in plan))
+    parts = sources_par_partie(plan, refs, len(unites))
+    bases = {p: base if ids is None else recoudre(entete, unites, ids)
+             for p, ids in parts.items()}
+    dire("sources par partie : " + ", ".join(
+        "toutes" if ids is None else str(len(ids)) for ids in parts.values())
+        + f" / {len(unites)}")
 
     def ecrire(tache: tuple[str, str | None]) -> str:
         """Une section, avec sa seconde chance. Ne leve jamais : un trou silencieux
@@ -1714,8 +1828,8 @@ def rediger_par_paquets(moteur, modele, cle, cle_env, systeme, base: str,
         for reste in (True, False):
             try:
                 return _demander_section(moteur, modele, cle, cle_env,
-                                         systeme_section or systeme, base, plan,
-                                         partie, sous, vocabulaire,
+                                         systeme_section or systeme, bases[partie],
+                                         plan, partie, sous, vocabulaire,
                                          mots_par_section, None)
             except Exception as e:
                 if reste:
@@ -2062,6 +2176,31 @@ def _self_test() -> None:
     brut = SAUT.join(["Voici le plan :", "## 1. Intro", "### 1.1 Contexte",
                       "### 1.2 Enjeux", "## 2. Modeles",
                       "VOCABULAIRE: cascade, spirale , cascade"])
+    # sources par partie : la demande se decoupe en unites et se recoud a
+    # l'identique ; le plan cite des [S#], chaque partie ne recoit que les siens
+    d = demande("M", "CM", "T", [("p1.jpg", "notes\nsuite")],
+                [("d.pdf", "[Repete sur chaque page, retire du texte : Univ]\n\n"
+                           "--- page 1 ---\nA\n\n--- page 2 ---\nB"),
+                 ("e.pdf", "--- page 1 ---\nC")], [], [("f.py", "x = 1")])
+    entete, unites = decouper_sources(d)
+    assert len(unites) == 5, unites          # 2 + 1 pages, 1 photo, 1 fichier
+    serre = lambda t: [l for l in t.split(SAUT) if l.strip()]   # au blanc pres
+    assert serre(recoudre(entete, unites)) == serre(d), recoudre(entete, unites)
+    assert "[S3] --- page 1 ---\nC" in recoudre(entete, unites, numeros=True)
+    une = recoudre(entete, unites, {2})
+    assert "Univ" in une and "B" in une and "\nA" not in une and "notes" not in une, une
+    assert numeros("S1-S3, S7, s9–10") == {1, 2, 3, 7, 9, 10}
+    brut_s = "## 1. Piles [S1-S2]\n### 1.1 LIFO [S1]\n## 2. Files [S4]\n## 3. Arbres"
+    assert plan_hierarchique(brut_s) == [("1. Piles", ["1.1 LIFO"]), ("2. Files", []),
+                                         ("3. Arbres", [])], plan_hierarchique(brut_s)
+    refs = sources_du_plan(brut_s)
+    assert refs == {"1. piles": {1, 2}, "2. files": {4}}, refs
+    parts = sources_par_partie(plan_hierarchique(brut_s), refs, 5)
+    # S3 non citee suit sa voisine d'avant (Piles), S5 suit Files ; Arbres sans
+    # etiquette recoit tout
+    assert parts == {"1. Piles": {1, 2, 3}, "2. Files": {4, 5}, "3. Arbres": None}, parts
+    assert set(sources_par_partie([("A", [])], {}, 3).values()) == {None}
+
     plan2 = plan_hierarchique(brut)
     assert plan2 == [("1. Intro", ["1.1 Contexte", "1.2 Enjeux"]),
                      ("2. Modeles", [])], plan2
