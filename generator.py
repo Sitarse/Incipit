@@ -681,51 +681,72 @@ def texte_du_lien(fichier: Path) -> tuple[str, str]:
     return adresse, texte
 
 
+# "12", "3 / 42", "Page 3 sur 42" : la pagination, que `--- page N ---` porte deja
+PAGINATION = re.compile(r"^(page\s*)?\d+(\s*(/|sur|of)\s*\d+)?$", re.I)
+
+
+def lignes_repetees(textes: list[str]) -> set[str]:
+    """Les lignes que le gabarit des diapos colle sur presque chaque page (nom du
+    cours, de l'ecole, du prof) : renvoyees a chaque appel de section, elles
+    coutent sans rien apprendre. Comparees a l'identique : "Notion 3" et
+    "Notion 4" sont du contenu, pas du gabarit."""
+    if len(textes) < 4:
+        return set()
+    vues: dict[str, int] = {}
+    for t in textes:
+        for ligne in {l.strip() for l in t.splitlines()}:
+            vues[ligne] = vues.get(ligne, 0) + 1
+    return {l for l, n in vues.items() if l and n >= 0.6 * len(textes)}
+
+
 def texte_du_pdf(chemin: Path,
                  images: dict[int, tuple[str, bool]] | None = None) -> str:
     """Texte d'un PDF de diapos. Vide = PDF scanne, on le signale au lieu de mentir.
 
-    Le lien de l'image de la page est colle dans l'en-tete de page, avec ce que
-    la page contient : le modele voit du premier coup quelle diapo vaut la peine
-    d'etre affichee, et a quel endroit du cours.
+    Le lien de l'image d'une page a figure est colle dans son en-tete : le
+    modele voit du premier coup quelle diapo vaut la peine d'etre affichee, et
+    a quel endroit du cours. Une page de texte seul n'a pas de lien : son image
+    n'apporterait rien, et le lien coutait des jetons a chaque appel.
 
     pymupdf (fitz) est essaye en premier : il n'utilise pas pyexpat (contrairement
     a pypdf) et tourne sans probleme sur Python 3.14 Linux ou la lib systeme
     libexpat peut etre incompatible. pypdf reste le repli si fitz est absent.
     """
     images = images or {}
-    pages = []
-
     try:
         import fitz  # pymupdf
-        doc = fitz.open(str(chemin))
-        for i, page in enumerate(doc, 1):
-            t = page.get_text().strip()
-            lien = ""
-            if i in images:
-                cible, figure = images[i]
-                quoi = ("SCHEMA OU FIGURE, a afficher si la notion est traitee ici"
-                        if figure else "texte seul, ne pas afficher")
-                lien = f"  [{quoi} : ![[{cible}]]]"
-            if t or lien:
-                pages.append(f"--- page {i} ---{lien}\n{t}")
+        textes = [page.get_text().strip() for page in fitz.open(str(chemin))]
     except ImportError:
         # fitz absent : repli sur pypdf
         from pypdf import PdfReader
-        for i, page in enumerate(PdfReader(str(chemin)).pages, 1):
-            t = (page.extract_text() or "").strip()
-            lien = ""
-            if i in images:
-                cible, figure = images[i]
-                quoi = ("SCHEMA OU FIGURE, a afficher si la notion est traitee ici"
-                        if figure else "texte seul, ne pas afficher")
-                lien = f"  [{quoi} : ![[{cible}]]]"
-            if t or lien:
-                pages.append(f"--- page {i} ---{lien}\n{t}")
+        textes = [(page.extract_text() or "").strip()
+                  for page in PdfReader(str(chemin)).pages]
+
+    gabarit = lignes_repetees(textes)
+    pages, retirees = [], []
+    for i, t in enumerate(textes, 1):
+        garde = []
+        for ligne in t.splitlines():
+            if PAGINATION.match(ligne.strip()):
+                continue
+            if ligne.strip() in gabarit:
+                if ligne.strip() not in retirees:
+                    retirees.append(ligne.strip())
+            else:
+                garde.append(ligne)
+        t = SAUT.join(garde).strip()
+        lien = ""
+        if i in images and images[i][1]:
+            lien = f"  [SCHEMA OU FIGURE, a afficher si la notion est traitee ici : ![[{images[i][0]}]]]"
+        if t or lien:
+            pages.append(f"--- page {i} ---{lien}\n{t}")
 
     if not pages:
         return "[Ce PDF ne contient aucun texte extractible : diapos scannees en image.]"
-    return "\n\n".join(pages)
+    # rien ne se perd : le gabarit est dit une fois, en tete, au lieu de N fois
+    entete = ("[Repete sur chaque page, retire du texte : "
+              + " | ".join(retirees) + "]\n\n") if retirees else ""
+    return entete + "\n\n".join(pages)
 
 
 # -------------------------------------------------------------- appels modele
@@ -1280,15 +1301,13 @@ def demande(matiere: str, type_: str, titre: str,
         morceaux += ["", "Les photos sont deja copiees a cote du cours. Pour en afficher "
                      "une, reprends exactement un de ces liens, place a l'endroit du "
                      "cours ou la figure est discutee :", *(f"  ![[{l}]]" for l in liens)]
-    if any("SCHEMA OU FIGURE" in t or "texte seul, ne pas" in t for _, t in pdfs):
-        morceaux += ["", "Chaque page de diapo est disponible en image : son lien "
-                     "![[...]] est donne dans l'en-tete de page ci-dessous, avec ce "
-                     "que la page contient. Les pages marquees SCHEMA OU FIGURE "
-                     "portent un dessin, un graphe ou un tableau que le texte extrait "
-                     "ne rend pas : affiche l'image de la diapo a l'endroit du cours "
-                     "ou la notion est traitee, plutot que de la redecrire ou de la "
-                     "redessiner. Les pages marquees texte seul ne s'affichent pas : "
-                     "leur contenu part dans le corps du cours."]
+    if any("SCHEMA OU FIGURE" in t for _, t in pdfs):
+        morceaux += ["", "Les pages de diapo marquees SCHEMA OU FIGURE portent un "
+                     "dessin, un graphe ou un tableau que le texte extrait ne rend "
+                     "pas ; leur lien ![[...]] est dans leur en-tete. Affiche l'image "
+                     "a l'endroit du cours ou la notion est traitee, plutot que de la "
+                     "redecrire ou de la redessiner. Les pages sans lien sont du texte "
+                     "seul : leur contenu part dans le corps du cours."]
     for nom, texte in pdfs:
         morceaux += ["", f"===== PDF : {nom} =====", texte]
     for nom, texte in transcriptions:
@@ -1934,13 +1953,13 @@ def _self_test() -> None:
     assert "travaux diriges" in d
     assert "![[Maths/_img/series/p1.jpg]]" in d
     assert "===== PDF : d.pdf =====" in d
-    assert "affiche l'image de la diapo" not in d, "aucune diapo en image ici"
+    assert "Affiche l'image" not in d, "aucune diapo en image ici"
     avec = demande("Maths", "CM", "S", [], [("d.pdf", "--- page 1 ---  [SCHEMA OU "
                                             "FIGURE, a afficher si la notion est "
                                             "traitee ici : ![[d/p01.webp]]]")], [])
-    assert "affiche l'image de la diapo" in avec
+    assert "Affiche l'image" in avec
     # sans diapo illustree, la consigne d'affichage ne part pas
-    assert "affiche l'image de la diapo" not in demande("M", "CM", "S", [],
+    assert "Affiche l'image" not in demande("M", "CM", "S", [],
                                                         [("d.pdf", "page 1")], [])
 
     # un fichier "autre" (code, .md...) part en bloc de code, langue devinee
@@ -1969,6 +1988,23 @@ def _self_test() -> None:
         gros.write_text("a" * (MAX_OCTETS_FICHIER + 500), encoding="utf-8")
         rendu = texte_du_fichier(gros)
         assert len(rendu) < MAX_OCTETS_FICHIER + 100 and "tronque" in rendu, rendu
+
+        # gabarit de diapo : retire des pages, dit une fois en tete ; seule la
+        # page a figure garde son lien d'image
+        import pymupdf
+        diapos = pymupdf.open()
+        for i in range(1, 6):
+            diapos.new_page().insert_text(
+                (50, 50), f"Univ X - Genie logiciel\nNotion {i}\n{i} / 5")
+        chemin_pdf = Path(tmp) / "diapos.pdf"
+        diapos.save(chemin_pdf)
+        rendu = texte_du_pdf(chemin_pdf, {2: ("a/p2.png", True), 3: ("a/p3.png", False)})
+        assert rendu.count("Univ X") == 1 and rendu.startswith("[Repete"), rendu
+        assert all(f"Notion {i}" in rendu for i in range(1, 6)), rendu
+        assert "/ 5" not in rendu, rendu
+        assert PAGINATION.match("Page 3 sur 42") and not PAGINATION.match("Notion 3")
+        assert "![[a/p2.png]]" in rendu and "a/p3.png" not in rendu, rendu
+        assert lignes_repetees(["a", "a", "a"]) == set(), "trop peu de pages"
 
     assert slug("Génie Logiciel M1") == "genie-logiciel-m1"
     assert slug("!!") == "cours"
