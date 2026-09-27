@@ -194,27 +194,23 @@ CONSIGNE_PHOTO = (
 # par l'oeil, et qui relira ce cours dix fois d'ici l'examen.
 PERSONA = (
     "===== QUI TU ES =====\n"
-    "Tu es le professeur qu'on aurait voulu avoir : patient, attentionne, qui "
-    "tient son eleve par la main du debut a la fin. Tu pars du principe que ton "
-    "lecteur ne connait RIEN au sujet -- ni le vocabulaire, ni les sigles, ni "
-    "les evidences du metier. Tu n'ecris pas pour montrer ce que tu sais, tu "
-    "ecris pour qu'il comprenne. Un cours ou l'eleve se perd est un cours rate, "
-    "meme si tout y est exact.\n"
-    "Concretement :\n"
-    "- tu expliques chaque principe etape par etape, jamais d'un bloc ;\n"
-    "- tu donnes l'intuition simple avant la formulation exacte ;\n"
-    "- tu accompagnes chaque notion d'un exemple concret ;\n"
-    "- tu ne laisses derriere toi aucun mot que tu n'as pas explique ;\n"
-    "- entre impressionner et faire comprendre, tu choisis faire comprendre, a "
-    "chaque phrase, sans exception.\n"
+    "Le professeur qu'on aurait voulu avoir : patient, attentionne, qui tient "
+    "son eleve par la main du debut a la fin. Ton lecteur ne connait RIEN au "
+    "sujet -- ni le vocabulaire, ni les sigles, ni les evidences du metier. Tu "
+    "ecris pour qu'il comprenne, pas pour montrer ce que tu sais : un cours ou "
+    "l'eleve se perd est rate, meme exact. Donc chaque principe etape par "
+    "etape, l'intuition simple avant la formulation exacte, un exemple concret "
+    "par notion, aucun mot laisse sans explication. Entre impressionner et "
+    "faire comprendre, tu choisis faire comprendre, a chaque phrase.\n"
     "\n"
     "===== POUR QUI TU ECRIS =====\n"
-    "Un etudiant qui decouvre la matiere, qui APPREND PAR L'OEIL -- un schema "
-    "lui reste, un paragraphe non -- et qui RELIRA ce cours des dizaines de "
-    "fois sur quatre mois, entre les CM, les TD et les TP de toutes ses autres "
-    "matieres. Il ne relit jamais depuis le debut : il ouvre le cours au "
-    "milieu, trois mois plus tard, et doit raccrocher immediatement."
+    "Un etudiant qui decouvre la matiere, qui APPREND PAR L'OEIL (un schema "
+    "lui reste, un paragraphe non) et qui RELIRA ce cours des dizaines de fois "
+    "sur quatre mois, entre les CM, TD et TP de ses autres matieres. Il ne "
+    "relit jamais depuis le debut : il l'ouvre au milieu, trois mois plus "
+    "tard, et doit raccrocher immediatement."
 )
+
 
 VOCAB_MINI, VOCAB_MAXI = 8, 12   # tout le cours, pas par partie. Mesure : sans
                                  # plafond chiffre, le modele alignait 40 termes,
@@ -225,144 +221,133 @@ CHARTE = (
     "===== CHARTE NON NEGOCIABLE (elle prime sur tout ce qui precede) =====\n"
     "\n"
     "1. AUCUN JARGON GRATUIT.\n"
-    "N'introduis jamais un sigle, une norme, une metrique ou un terme technique "
-    "absent des sources du cours. Exemples de ce qu'il ne faut JAMAIS ecrire : "
-    "« un projet solo de 50 kLOC », « le MCD », « l'atomicite des transactions "
-    "(ACID) », « couverture MC/DC (DO-178C niveau A) ». Ces formules ne sont ni "
-    "dans le cours ni dans la tete du lecteur : elles ne font que le perdre et "
-    "lui couper l'envie de comprendre la section.\n"
-    "Si un terme technique est vraiment indispensable, explique-le en langage "
-    "courant AVANT de l'employer -- jamais apres coup, jamais glisse entre "
-    "parentheses comme une evidence partagee.\n"
-    "Les complements de culture generale sont les bienvenus a une condition : "
-    "ils eclairent la notion et restent simples. Citer une norme ou un acronyme "
-    "pour faire savant n'est pas un complement, c'est du bruit : supprime-le.\n"
+    "Jamais de sigle, norme, metrique ou terme technique absent des sources. A "
+    "ne JAMAIS ecrire : « un projet solo de 50 kLOC », « le MCD », "
+    "« l'atomicite des transactions (ACID) », « couverture MC/DC (DO-178C "
+    "niveau A) » -- absents du cours comme de la tete du lecteur, ils le "
+    "perdent et lui coupent l'envie de comprendre.\n"
+    "Un terme vraiment indispensable s'explique en langage courant AVANT "
+    "d'etre employe -- jamais apres coup, jamais glisse entre parentheses "
+    "comme une evidence partagee.\n"
+    "La culture generale est bienvenue si elle eclaire la notion et reste "
+    "simple ; une norme ou un acronyme cite pour faire savant est du bruit : "
+    "supprime-le.\n"
     "\n"
     "2. VOCABULAIRE : PEU, UTILE, TRIVIAL.\n"
-    f"- Entre {VOCAB_MINI} et {VOCAB_MAXI} termes pour tout le cours. Jamais "
-    "40. Dans le doute, tu en mets moins.\n"
-    "- Critere unique d'admission : sans ce terme, le lecteur ne peut pas "
-    "comprendre la suite du cours. Rien d'autre n'entre.\n"
-    "- Un mot du langage courant employe dans son sens courant n'est JAMAIS un "
-    "terme de vocabulaire (« bancaire », « telecommunications », « client », "
-    "« reseau » au sens ordinaire).\n"
-    "- Test de coherence, a passer avant de retenir un terme : si un autre mot "
-    "du meme registre joue le meme role dans la meme phrase, soit les deux "
-    "entrent, soit aucun. Definir « bancaire » sans definir "
+    f"- Entre {VOCAB_MINI} et {VOCAB_MAXI} termes pour tout le cours, jamais "
+    "40 ; dans le doute, moins.\n"
+    "- Seul critere d'admission : sans ce terme, le lecteur ne comprend pas la "
+    "suite du cours.\n"
+    "- Un mot courant dans son sens courant n'en est JAMAIS un (« bancaire », "
+    "« telecommunications », « client », « reseau » au sens ordinaire).\n"
+    "- Coherence : si deux mots du meme registre jouent le meme role dans la "
+    "meme phrase, les deux entrent ou aucun. Definir « bancaire » sans "
     "« telecommunications » est une faute.\n"
-    "- Toute definition est TRIVIALE : une phrase courte, des mots de tous les "
-    "jours, PUIS un exemple concret. Ne definis jamais un terme par un autre "
-    "terme technique. Une definition qu'un debutant ne comprend pas est un "
-    "echec, meme exacte.\n"
-    "- UN SEUL DOMICILE PAR DEFINITION. Le tableau « Vocabulaire à retenir » "
-    "est ce domicile : le lecteur y tombe en un clic sur le mot, directement a "
-    "la bonne ligne. Un terme du tableau ne recoit donc PAS en plus son encadre "
-    "`> [!definition]` dans la page -- la meme definition a deux endroits "
-    "alourdit la page sans rien apprendre de plus. Garde `> [!definition]` pour "
-    "un concept qu'il faut poser sur place avant de pouvoir lire la suite et "
-    "qui n'est pas au tableau.\n"
+    "- Definition TRIVIALE : une phrase courte en mots de tous les jours, PUIS "
+    "un exemple concret ; jamais un terme technique pour en definir un autre. "
+    "Incomprise d'un debutant, elle a echoue, meme exacte.\n"
+    "- UN SEUL DOMICILE PAR DEFINITION : le tableau « Vocabulaire à retenir », "
+    "ou le lecteur tombe en un clic sur le mot, a la bonne ligne. Un terme du "
+    "tableau n'a donc PAS aussi son `> [!definition]` dans la page (la meme "
+    "definition deux fois alourdit sans rien apprendre). `> [!definition]` "
+    "reste pour un concept a poser sur place avant la suite, hors tableau.\n"
     "\n"
     "3. AERE COMME UN DIAPO, PAS COMME UN ROMAN.\n"
-    "Le texte suivi est l'exception, pas la regle. Dans l'ordre de preference : "
-    "schema, tableau, etapes numerotees, liste courte, et seulement en dernier "
-    "recours un paragraphe.\n"
-    "Aucun paragraphe de plus de 4 lignes : au-dela, coupe-le ou convertis-le "
-    "en liste, tableau ou schema. Une phrase qui n'apprend rien de plus que la "
-    "precedente se supprime -- moins de prose, meme contenu, cours plus lisible "
-    "et plus vite relu.\n"
-    "==surligne== les deux ou trois mots vraiment decisifs d'une section, pas "
-    "plus : tout surligner revient a ne rien surligner.\n"
+    "Par ordre de preference : schema, tableau, etapes numerotees, liste "
+    "courte, et en dernier recours un paragraphe. Aucun paragraphe de plus de "
+    "4 lignes : coupe-le ou convertis-le. Une phrase qui n'apprend rien de "
+    "plus que la precedente se supprime.\n"
+    "==surligne== les deux ou trois mots decisifs d'une section, pas plus : "
+    "tout surligner, c'est ne rien surligner.\n"
     "\n"
     "4. PEDAGOGIE VISUELLE ET PAS-A-PAS.\n"
-    "Pour chaque notion importante, deroule cette progression, dans cet ordre :\n"
+    "Chaque notion importante, dans cet ordre :\n"
     "  (a) l'intuition en une phrase simple, avec une analogie du quotidien ;\n"
     "  (b) la decomposition etape par etape, numerotee ;\n"
-    "  (c) un exemple concret, chiffre quand c'est possible ;\n"
-    "  (d) le cas limite ou le piege, seulement s'il sert vraiment.\n"
-    "Des qu'il y a un processus, un cycle, une hierarchie ou une comparaison, "
-    "fais-en un schema dans un bloc ```mermaid``` : le lecteur apprend par "
-    "l'oeil. Le schema remplace sa description -- ne raconte pas en prose ce "
-    "qu'il montre deja.\n"
+    "  (c) un exemple concret, chiffre si possible, dans un `> [!example]` ;\n"
+    "  (d) le cas limite ou le piege, dans un `> [!danger]`, seulement s'il "
+    "sert.\n"
+    "Processus, cycle, hierarchie ou comparaison : un schema ```mermaid```. Il "
+    "remplace sa description -- ne raconte pas en prose ce qu'il montre.\n"
     "\n"
-    "5. ECRIT POUR ETRE RELU DIX FOIS.\n"
-    "Le lecteur rouvrira ce cours dans trois mois, au milieu, sans souvenir du "
-    "reste. Donc :\n"
-    "- meme structure d'une partie a l'autre, toujours dans le meme ordre : il "
-    "doit savoir ou regarder sans chercher ;\n"
+    "5. ECRIT POUR ETRE RELU DIX FOIS (au milieu, dans trois mois, sans "
+    "souvenir du reste).\n"
+    "- meme structure, dans le meme ordre, d'une partie a l'autre : il sait ou "
+    "regarder ;\n"
     "- des titres qui annoncent ce qu'on y apprend, jamais « Generalites » ni "
     "« Introduction » ;\n"
-    "- aucune dependance a une lecture precedente : pas de « comme vu plus "
-    "haut » tout seul -- redis en trois mots de quoi il s'agit, ou pose un "
-    "`> [!rappel]` ;\n"
-    "- un encadre `> [!tip] À retenir` par sous-partie, qui se suffit a "
-    "lui-meme : c'est ce que le lecteur relira en survol la veille de "
-    "l'examen.\n"
+    "- pas de « comme vu plus haut » seul : redis en trois mots de quoi il "
+    "s'agit, ou pose un `> [!rappel]` ;\n"
+    "- un `> [!tip] À retenir` par sous-partie, qui se suffit a lui-meme : ce "
+    "qu'il relira en survol la veille de l'examen.\n"
     "\n"
     "6. LES ENCADRES PORTENT UN SENS, ET UNE COULEUR.\n"
-    "Chaque type sort dans une couleur differente sur le PDF : le lecteur les "
-    "reconnait a la couleur avant meme de les lire. Pour ces cinq roles, "
-    "utilise exactement ces types :\n"
-    "  `> [!example] Exemple`   -- vert   : un cas concret, chiffre si possible\n"
-    "  `> [!tip] À retenir`     -- violet : le point cle a reviser en survol\n"
-    "  `> [!note] Complément`   -- bleu   : ce que tu ajoutes hors des sources\n"
-    "  `> [!danger] Piège`      -- rouge  : l'erreur classique a l'examen\n"
-    "  `> [!definition] Terme`  -- or     : un concept a poser avant la suite\n"
-    "Les autres types restent disponibles quand ils collent mieux : "
-    "`> [!rappel]` (un acquis anterieur qu'on reactive), `> [!theoreme]` "
-    "(un enonce formel), `> [!demonstration]` (un raisonnement pas-a-pas), "
-    "`> [!loi]` (l'enonce fondateur du cours -- une seule fois dans tout le "
-    "cours, pas une de plus)."
+    "Chaque type sort dans sa couleur sur le PDF : le lecteur le reconnait "
+    "avant de le lire. Utilise exactement :\n"
+    "  `> [!example] Exemple`     vert   : un cas concret deroule jusqu'au "
+    "bout ; au moins un par notion importante\n"
+    "  `> [!tip] À retenir`       violet : l'essentiel, 1 a 3 lignes\n"
+    "  `> [!note] Complément`     bleu   : ce que tu ajoutes hors des sources, "
+    "autant que necessaire\n"
+    "  `> [!danger] Piège`        rouge  : l'erreur classique a l'examen, la "
+    "confusion avec la notion voisine ; seulement s'il y en a vraiment un\n"
+    "  `> [!definition] Terme`    or     : un concept a poser avant la suite\n"
+    "  `> [!warning] À vérifier`  : source illisible, contradiction "
+    "diapo/notes, quand ca arrive\n"
+    "  `> [!question] Auto-test`  : les questions de fin, un seul\n"
+    "Au besoin aussi : `> [!rappel]` (un acquis anterieur qu'on reactive), "
+    "`> [!theoreme]` (un enonce formel), `> [!demonstration]` (un raisonnement "
+    "pas-a-pas), `> [!loi]` (l'enonce fondateur du cours -- une seule fois dans "
+    "tout le cours)."
 )
+
 
 # Le sujet du prof est souvent la ou l'etudiant decroche : "copiez ce code",
 # "lancez cette commande", sans dire ni pourquoi ni ce que ca fait. Meme
 # persona, meme methode et meme charte que le cours ; seul le travail change.
 CONSIGNE_SUJET = (
     "===== CE QUE TU ECRIS ICI : UN SUJET RETRAVAILLE, PAS UN COURS =====\n"
-    "(prime sur la structure de cours decrite par la methode ci-dessus : garde "
-    "sa forme -- encadres, couleurs, schemas, formules -- pas son plan)\n"
+    "(prime sur la structure de cours de la methode ci-dessus : garde sa "
+    "forme -- encadres, couleurs, schemas, formules -- pas son plan)\n"
     "\n"
-    "Les sources contiennent un sujet d'exercice, de TD ou de TP donne par le "
-    "professeur. Tu le reecris pour qu'un etudiant qui ne connait rien le "
-    "comprenne de bout en bout. Ce n'est ni un corrige ni un autre exercice : "
-    "l'etudiant fera exactement le meme travail et rendra exactement la meme "
-    "chose. Tu changes la facon de le demander, jamais ce qui est demande.\n"
+    "Les sources contiennent un sujet d'exercice, de TD ou de TP du "
+    "professeur. Reecris-le pour qu'un etudiant qui ne connait rien le "
+    "comprenne de bout en bout. Ni corrige ni autre exercice : meme travail, "
+    "meme rendu ; tu changes la facon de demander, jamais ce qui est demande.\n"
     "\n"
     "Dans cet ordre :\n"
-    "1. L'OBJECTIF : ce que l'etudiant saura faire a la fin, et a quoi ca sert "
-    "en vrai.\n"
-    "2. LES PREREQUIS : chaque notion a connaitre avant de commencer, expliquee "
-    "en une phrase simple avec un exemple.\n"
-    "3. CHAQUE QUESTION OU ETAPE, dans l'ordre et avec la numerotation du "
-    "professeur :\n"
-    "   - la consigne d'origine citee mot pour mot en `> citation` ;\n"
+    "1. L'OBJECTIF : ce qu'il saura faire a la fin, et a quoi ca sert en vrai.\n"
+    "2. LES PREREQUIS : chaque notion a connaitre avant, en une phrase simple "
+    "avec un exemple.\n"
+    "3. CHAQUE QUESTION OU ETAPE, dans l'ordre et la numerotation du prof :\n"
+    "   - la consigne d'origine mot pour mot en `> citation` ;\n"
     "   - ce qu'elle demande, en clair ;\n"
-    "   - pourquoi on fait cette etape, et pourquoi a ce moment-la ;\n"
-    "   - pour chaque commande, fonction, instruction, option ou morceau de code "
-    "fourni par le sujet : ce que fait chaque element et pourquoi on s'en sert. "
-    "Du code ou une commande a recopier se recopie aussi, puis s'explique ligne "
-    "par ligne : l'etudiant ne doit plus jamais taper quelque chose qu'il ne "
-    "comprend pas ;\n"
-    "   - comment verifier qu'on a reussi l'etape, et le piege previsible.\n"
+    "   - pourquoi cette etape, et pourquoi a ce moment-la ;\n"
+    "   - chaque commande, fonction, instruction, option ou morceau de code "
+    "fourni : ce que fait chaque element et pourquoi. Code ou commande a "
+    "recopier : recopie-le, puis explique-le ligne par ligne -- l'etudiant ne "
+    "doit plus jamais taper ce qu'il ne comprend pas ;\n"
+    "   - comment verifier que l'etape est reussie, et le piege previsible.\n"
     "\n"
-    "Tu ne donnes PAS la reponse de ce que l'etudiant doit trouver ou produire "
-    "lui-meme : tu guides (methode, indice, ce qu'on attend), il fait. Tu "
-    "n'inventes aucune question, aucune donnee, aucune valeur. Ce que le sujet "
-    "laisse ambigu ou incomplet se signale dans un `> [!warning] À vérifier`.\n"
+    "Tu ne donnes PAS la reponse de ce qu'il doit trouver ou produire : tu "
+    "guides (methode, indice, ce qu'on attend), il fait. Tu n'inventes aucune "
+    "question, donnee ni valeur. Ce que le sujet laisse ambigu ou incomplet va "
+    "dans un `> [!warning] À vérifier`.\n"
     "Si un cours deja redige sur ce chapitre est fourni, reprends ses mots et "
-    "ses notations pour expliquer : l'etudiant doit reconnaitre ce qu'il a lu."
+    "notations : l'etudiant doit reconnaitre ce qu'il a lu."
 )
+
 
 # La persona ne tient pas sur quinze appels paralleles si elle n'est posee
 # qu'une fois : chaque section la reprend, en court.
 RAPPEL_PERSONA = (
     "===== RAPPEL : QUI TU ES SUR CETTE SECTION =====\n"
-    "Professeur patient, pas conferencier. Ton lecteur ne connait rien au "
-    "sujet, retient par l'oeil, et relira cette section des dizaines de fois. "
-    "Donc : intuition simple d'abord, puis les etapes numerotees, puis un "
-    "exemple concret. Aucun sigle ni norme absents des sources. Un schema "
-    "plutot qu'un paragraphe. Aucun paragraphe de plus de 4 lignes. La section "
-    "doit se comprendre seule, trois mois plus tard, sans avoir relu le reste."
+    "Professeur patient, pas conferencier, pour un lecteur qui ne connait rien, "
+    "retient par l'oeil et relira cette section des dizaines de fois : "
+    "intuition simple, puis etapes numerotees, puis exemple concret. Aucun "
+    "sigle ni norme absents des sources, un schema plutot qu'un paragraphe, "
+    "aucun paragraphe de plus de 4 lignes. La section se comprend seule, trois "
+    "mois plus tard, sans relire le reste."
 )
 
 
@@ -681,51 +666,72 @@ def texte_du_lien(fichier: Path) -> tuple[str, str]:
     return adresse, texte
 
 
+# "12", "3 / 42", "Page 3 sur 42" : la pagination, que `--- page N ---` porte deja
+PAGINATION = re.compile(r"^(page\s*)?\d+(\s*(/|sur|of)\s*\d+)?$", re.I)
+
+
+def lignes_repetees(textes: list[str]) -> set[str]:
+    """Les lignes que le gabarit des diapos colle sur presque chaque page (nom du
+    cours, de l'ecole, du prof) : renvoyees a chaque appel de section, elles
+    coutent sans rien apprendre. Comparees a l'identique : "Notion 3" et
+    "Notion 4" sont du contenu, pas du gabarit."""
+    if len(textes) < 4:
+        return set()
+    vues: dict[str, int] = {}
+    for t in textes:
+        for ligne in {l.strip() for l in t.splitlines()}:
+            vues[ligne] = vues.get(ligne, 0) + 1
+    return {l for l, n in vues.items() if l and n >= 0.6 * len(textes)}
+
+
 def texte_du_pdf(chemin: Path,
                  images: dict[int, tuple[str, bool]] | None = None) -> str:
     """Texte d'un PDF de diapos. Vide = PDF scanne, on le signale au lieu de mentir.
 
-    Le lien de l'image de la page est colle dans l'en-tete de page, avec ce que
-    la page contient : le modele voit du premier coup quelle diapo vaut la peine
-    d'etre affichee, et a quel endroit du cours.
+    Le lien de l'image d'une page a figure est colle dans son en-tete : le
+    modele voit du premier coup quelle diapo vaut la peine d'etre affichee, et
+    a quel endroit du cours. Une page de texte seul n'a pas de lien : son image
+    n'apporterait rien, et le lien coutait des jetons a chaque appel.
 
     pymupdf (fitz) est essaye en premier : il n'utilise pas pyexpat (contrairement
     a pypdf) et tourne sans probleme sur Python 3.14 Linux ou la lib systeme
     libexpat peut etre incompatible. pypdf reste le repli si fitz est absent.
     """
     images = images or {}
-    pages = []
-
     try:
         import fitz  # pymupdf
-        doc = fitz.open(str(chemin))
-        for i, page in enumerate(doc, 1):
-            t = page.get_text().strip()
-            lien = ""
-            if i in images:
-                cible, figure = images[i]
-                quoi = ("SCHEMA OU FIGURE, a afficher si la notion est traitee ici"
-                        if figure else "texte seul, ne pas afficher")
-                lien = f"  [{quoi} : ![[{cible}]]]"
-            if t or lien:
-                pages.append(f"--- page {i} ---{lien}\n{t}")
+        textes = [page.get_text().strip() for page in fitz.open(str(chemin))]
     except ImportError:
         # fitz absent : repli sur pypdf
         from pypdf import PdfReader
-        for i, page in enumerate(PdfReader(str(chemin)).pages, 1):
-            t = (page.extract_text() or "").strip()
-            lien = ""
-            if i in images:
-                cible, figure = images[i]
-                quoi = ("SCHEMA OU FIGURE, a afficher si la notion est traitee ici"
-                        if figure else "texte seul, ne pas afficher")
-                lien = f"  [{quoi} : ![[{cible}]]]"
-            if t or lien:
-                pages.append(f"--- page {i} ---{lien}\n{t}")
+        textes = [(page.extract_text() or "").strip()
+                  for page in PdfReader(str(chemin)).pages]
+
+    gabarit = lignes_repetees(textes)
+    pages, retirees = [], []
+    for i, t in enumerate(textes, 1):
+        garde = []
+        for ligne in t.splitlines():
+            if PAGINATION.match(ligne.strip()):
+                continue
+            if ligne.strip() in gabarit:
+                if ligne.strip() not in retirees:
+                    retirees.append(ligne.strip())
+            else:
+                garde.append(ligne)
+        t = SAUT.join(garde).strip()
+        lien = ""
+        if i in images and images[i][1]:
+            lien = f"  [SCHEMA OU FIGURE, a afficher si la notion est traitee ici : ![[{images[i][0]}]]]"
+        if t or lien:
+            pages.append(f"--- page {i} ---{lien}\n{t}")
 
     if not pages:
         return "[Ce PDF ne contient aucun texte extractible : diapos scannees en image.]"
-    return "\n\n".join(pages)
+    # rien ne se perd : le gabarit est dit une fois, en tete, au lieu de N fois
+    entete = ("[Repete sur chaque page, retire du texte : "
+              + " | ".join(retirees) + "]\n\n") if retirees else ""
+    return entete + "\n\n".join(pages)
 
 
 # -------------------------------------------------------------- appels modele
@@ -1083,7 +1089,10 @@ def _claude_cli(modele: str, systeme: str | None, texte: str, photo: Path | None
            "--include-partial-messages", "--verbose"]
     if photo:
         texte = f"{texte}\n\nLa photo a transcrire : {photo.resolve()}"
-        cmd += ["--allowed-tools", "Read", "--add-dir", str(photo.resolve().parent)]
+        # --tools : seul Read est charge, pas la dizaine d'autres outils du CLI
+        # et leurs descriptions, repayees a chaque photo
+        cmd += ["--tools", "Read", "--allowed-tools", "Read",
+                "--add-dir", str(photo.resolve().parent)]
     elif systeme:
         cmd += ["--system-prompt", systeme]
 
@@ -1125,6 +1134,9 @@ def transcripteur_retenu(cle_env: Path | None) -> str:
     return garde if garde in TRANSCRIPTEURS else "auto"
 
 
+CLAUDE_PHOTO = "sonnet"
+
+
 def _lire_photo(moteur, modele, cle, photo: Path, cle_env, choix: str) -> str:
     """Une photo -> son texte, par le moteur choisi dans l'interface.
 
@@ -1132,6 +1144,10 @@ def _lire_photo(moteur, modele, cle, photo: Path, cle_env, choix: str) -> str:
     cascade, y compris le quota : c'est l'interet de pouvoir en changer.
     """
     t = TRANSCRIPTEURS[choix]
+    if moteur == "claude-cli":
+        # recopier une page ne demande pas Opus ; la cle de cache garde le
+        # modele de redaction pour ne pas faire repayer les photos deja lues
+        modele = CLAUDE_PHOTO
     if t.fournisseur is None:
         return repondre(moteur, modele, cle, None, CONSIGNE_PHOTO, cle_env=cle_env,
                         photo=photo, max_jetons=MAX_JETONS_PHOTO)
@@ -1184,7 +1200,33 @@ def transcrire(moteur: str, modele: str | None, cle: str | None, photos: list[Pa
 
 # -------------------------------------------------------------------- prompt
 
-def consigne_systeme(langue: str = "fr", sujet: bool = False) -> str:
+# Ce que la methode dit du cours entier et qu'une section seule n'a pas a lire :
+# lire les fichiers (elle recoit le texte), l'en-tete YAML et les sections de fin
+# (ecrits ailleurs), et le calibrage de longueur, que la cible chiffree de chaque
+# section remplace -- ses « 200 a 400 mots » la contredisaient. Renvoye a chaque
+# section, ca coutait ~1300 jetons x 15 appels.
+HORS_SECTION = ("## Entrée", "### 1. Inventaire", "### 2. Lecture",
+                "### 3. Extraire", "### 5. Calibrer", "#### Fin de document",
+                "### 9. Sortie")
+
+
+def sans_titres(md: str, titres: tuple[str, ...]) -> str:
+    """Retire chaque titre de `titres` avec tout ce qu'il couvre, jusqu'au
+    prochain titre de meme niveau ou plus haut."""
+    garde, coupe = [], 0          # coupe : niveau du titre retire, 0 = on garde
+    for ligne in md.splitlines():
+        niveau = len(ligne) - len(ligne.lstrip("#")) if ligne.startswith("#") else 0
+        if niveau and coupe and niveau <= coupe:
+            coupe = 0
+        if niveau and ligne.startswith(titres):
+            coupe = niveau
+        if not coupe:
+            garde.append(ligne)
+    return SAUT.join(garde)
+
+
+def consigne_systeme(langue: str = "fr", sujet: bool = False,
+                     section: bool = False) -> str:
     """La skill `cours` telle quelle : c'est elle, la methode pedagogique.
 
     Elle est prise en sandwich entre la persona -- qui redige, et pour qui --
@@ -1195,12 +1237,17 @@ def consigne_systeme(langue: str = "fr", sujet: bool = False) -> str:
     `sujet` : reecrire le sujet d'exercice depose plutot que rediger le cours.
     Sa consigne se glisse apres la methode (elle en garde la forme, pas le plan)
     et avant la charte, qui prime toujours.
+
+    `section` : la version allegee pour un appel qui n'ecrit qu'une section
+    (cf. HORS_SECTION), renvoyee a chaque appel de la redaction par paquets.
     """
     if not SKILL.is_file():
         raise SystemExit(f"Methode introuvable : {SKILL}")
     corps = re.sub(r"^---\n.*?\n---\n", "", SKILL.read_text(encoding="utf-8"),
                    count=1, flags=re.S)
-    
+    if section:
+        corps = sans_titres(corps, HORS_SECTION)
+
     # Nom de la langue en français pour le prompt
     noms_langues = {
         "fr": "français", "en": "anglais", "es": "espagnol", "de": "allemand",
@@ -1213,18 +1260,20 @@ def consigne_systeme(langue: str = "fr", sujet: bool = False) -> str:
     }
     nom_langue = noms_langues.get(langue, "français")
     
-    quoi, ce = ("un sujet d'exercice", "Le sujet") if sujet else ("un cours", "Le cours")
+    quoi = "un sujet d'exercice" if sujet else "un cours"
     return (
-        f"Tu rediges {quoi} pour un etudiant, en {nom_langue}, en Markdown Obsidian.\n\n"
-        f"IMPORTANT : {ce} DOIT etre redige ENTIEREMENT en {nom_langue}. Pas un mot dans une autre langue.\n\n"
+        f"Tu rediges {quoi} pour un etudiant, en Markdown Obsidian, ENTIEREMENT "
+        f"en {nom_langue} : pas un mot dans une autre langue.\n\n"
         + PERSONA + "\n\n"
         "Applique la methode ci-dessous a la lettre.\n\n" + corps + "\n\n"
         + (CONSIGNE_SUJET + "\n\n" if sujet else "")
         + CHARTE + "\n\n"
-        "Contraintes de sortie : reponds uniquement par le contenu du fichier .md, "
-        "en-tete YAML compris. Aucun commentaire avant ou apres, aucun bloc de code "
-        "englobant l'ensemble. Tu n'as pas d'outils : les sources te sont donnees "
-        "en texte, ne demande a en lire aucune autre."
+        + ("Contraintes de sortie : reponds uniquement par la section demandee. "
+           if section else
+           "Contraintes de sortie : reponds uniquement par le contenu du fichier .md, "
+           "en-tete YAML compris. ")
+        + "Rien avant ni apres, aucun bloc de code englobant. Tu n'as pas "
+        "d'outils : les sources sont dans la demande, n'en reclame aucune autre."
     )
 
 
@@ -1246,15 +1295,13 @@ def demande(matiere: str, type_: str, titre: str,
         morceaux += ["", "Les photos sont deja copiees a cote du cours. Pour en afficher "
                      "une, reprends exactement un de ces liens, place a l'endroit du "
                      "cours ou la figure est discutee :", *(f"  ![[{l}]]" for l in liens)]
-    if any("SCHEMA OU FIGURE" in t or "texte seul, ne pas" in t for _, t in pdfs):
-        morceaux += ["", "Chaque page de diapo est disponible en image : son lien "
-                     "![[...]] est donne dans l'en-tete de page ci-dessous, avec ce "
-                     "que la page contient. Les pages marquees SCHEMA OU FIGURE "
-                     "portent un dessin, un graphe ou un tableau que le texte extrait "
-                     "ne rend pas : affiche l'image de la diapo a l'endroit du cours "
-                     "ou la notion est traitee, plutot que de la redecrire ou de la "
-                     "redessiner. Les pages marquees texte seul ne s'affichent pas : "
-                     "leur contenu part dans le corps du cours."]
+    if any("SCHEMA OU FIGURE" in t for _, t in pdfs):
+        morceaux += ["", "Les pages de diapo marquees SCHEMA OU FIGURE portent un "
+                     "dessin, un graphe ou un tableau que le texte extrait ne rend "
+                     "pas ; leur lien ![[...]] est dans leur en-tete. Affiche l'image "
+                     "a l'endroit du cours ou la notion est traitee, plutot que de la "
+                     "redecrire ou de la redessiner. Les pages sans lien sont du texte "
+                     "seul : leur contenu part dans le corps du cours."]
     for nom, texte in pdfs:
         morceaux += ["", f"===== PDF : {nom} =====", texte]
     for nom, texte in transcriptions:
@@ -1317,7 +1364,7 @@ def plan_hierarchique(brut: str) -> list[tuple[str, list[str]]]:
     for ligne in brut.splitlines():
         if not (m := re.match(r"^\s*(#{2,3})\s+(.+?)\s*$", ligne)):
             continue
-        titre = m.group(2).strip(" .*_")
+        titre = ETIQUETTE.sub("", m.group(2)).strip(" .*_")
         if not titre:
             continue
         if len(m.group(1)) == 2:
@@ -1412,9 +1459,111 @@ def nettoyer(md: str) -> str:
 
 # ------------------------------------------------------- redaction par paquets
 
-def plan_du_cours(moteur, modele, cle, cle_env,
-                  base: str) -> tuple[list[tuple[str, list[str]]], list[str]]:
-    """Premier appel : le plan a deux niveaux, et le vocabulaire du cours.
+# ------------------------------------------------- sources par partie du plan
+
+# Chaque section recevait toutes les sources : 15 sections, 15 fois le meme
+# poly. Le plan dit maintenant quelles sources nourrissent quelle partie, et
+# chaque section ne recoit que les siennes.
+GROUPE = re.compile(r"^===== (PDF|NOTES MANUSCRITES|FICHIER|PAGE WEB) : .* =====$")
+PAGE = re.compile(r"^--- page \d+ ---")
+ETIQUETTE = re.compile(r"\s*\[\s*(S\d+(?:\s*[-,–]\s*S?\d+)*)\s*\]\s*$", re.I)
+
+
+def decouper_sources(base: str) -> tuple[str, list[tuple[str, str]]]:
+    """La demande -> (en-tete, [(en-tete du groupe, unite)]).
+
+    Une unite est la plus petite source qu'une partie puisse reclamer : une page
+    de PDF, une photo, un fichier, une page web. L'en-tete du groupe (nom du
+    PDF, gabarit retire) voyage avec chaque page pour qu'elle reste lisible seule.
+
+    ponytail: decoupe sur les marqueurs de demande() ; un fichier source qui
+    contiendrait lui-meme une ligne "===== PDF : x =====" se couperait a tort.
+    """
+    entete, unites = [], []
+    groupe, pdf, courante = None, False, None
+    for ligne in base.split(SAUT):
+        if GROUPE.match(ligne):
+            if courante is not None:
+                unites.append((groupe, SAUT.join(courante).strip(SAUT)))
+            groupe, pdf = ligne, ligne.startswith("===== PDF")
+            courante = None if pdf else []
+        elif groupe is None:
+            entete.append(ligne)
+        elif pdf and PAGE.match(ligne):
+            if courante is not None:
+                unites.append((groupe, SAUT.join(courante).strip(SAUT)))
+            courante = [ligne]
+        elif courante is None:            # PDF avant sa premiere page : gabarit
+            groupe += SAUT + ligne
+        else:
+            courante.append(ligne)
+    if courante is not None:
+        unites.append((groupe, SAUT.join(courante).strip(SAUT)))
+    return SAUT.join(entete).rstrip(), unites
+
+
+def recoudre(entete: str, unites: list[tuple[str, str]],
+             garder: set[int] | None = None, numeros: bool = False) -> str:
+    """L'inverse de decouper_sources, limite aux unites `garder` (1-based).
+    `numeros` prefixe chaque unite de son [S#] : c'est ce que le plan cite."""
+    morceaux, dernier = [entete], None
+    for i, (groupe, texte) in enumerate(unites, 1):
+        if garder is not None and i not in garder:
+            continue
+        morceaux += ["", groupe.strip(SAUT)] if groupe != dernier else [""]
+        dernier = groupe
+        morceaux.append(f"[S{i}] {texte}" if numeros else texte)
+    return SAUT.join(morceaux)
+
+
+def numeros(etiquette: str) -> set[int]:
+    """"S1-S4, S9" -> {1, 2, 3, 4, 9}."""
+    ids = set()
+    for bout in re.split(r"\s*,\s*", etiquette):
+        if m := re.match(r"S?(\d+)(?:\s*[-–]\s*S?(\d+))?$", bout.strip(), re.I):
+            debut = int(m.group(1))
+            ids.update(range(debut, int(m.group(2) or debut) + 1))
+    return ids
+
+
+def sources_du_plan(brut: str) -> dict[str, set[int]]:
+    """Titre de partie (en minuscules) -> numeros des sources qu'elle couvre."""
+    refs = {}
+    for ligne in brut.splitlines():
+        if (m := re.match(r"^\s*##\s+(.+?)\s*$", ligne)) and (e := ETIQUETTE.search(m.group(1))):
+            titre = ETIQUETTE.sub("", m.group(1)).strip(" .*_").lower()
+            refs[titre] = refs.get(titre, set()) | numeros(e.group(1))
+    return refs
+
+
+def sources_par_partie(plan: list[tuple[str, list[str]]], refs: dict[str, set[int]],
+                       n: int) -> dict[str, set[int] | None]:
+    """Les sources de chaque partie. None = toutes : une partie que le plan n'a pas
+    etiquetee les recoit toutes, plutot que d'ecrire a vide.
+
+    Rien ne se perd : une source que le plan n'a citee nulle part rejoint la
+    partie qui cite sa voisine d'avant (dans l'ordre du prof, elle continue
+    la meme notion), ou la premiere partie si elle ouvre le cours.
+    """
+    parts = {p: {i for i in refs.get(p.lower(), set()) if 1 <= i <= n} or None
+             for p, _ in plan}
+    etiquetees = [p for p, _ in plan if parts[p]]
+    if not etiquetees:
+        return {p: None for p, _ in plan}
+    for i in range(1, n + 1):
+        if any(i in parts[p] for p in etiquetees):
+            continue
+        avant = [p for p in etiquetees if min(parts[p]) < i]
+        hote = max(avant, key=lambda p: max(j for j in parts[p] if j < i)) \
+            if avant else etiquetees[0]
+        parts[hote].add(i)
+    return parts
+
+
+def plan_du_cours(moteur, modele, cle, cle_env, base: str, numerote: bool = False
+                  ) -> tuple[list[tuple[str, list[str]]], list[str], dict[str, set[int]]]:
+    """Premier appel : le plan a deux niveaux, le vocabulaire du cours et, si
+    `numerote` (les sources portent leur [S#]), les sources de chaque partie.
 
     Le plan sert de carte a chaque section pour qu'aucune ne deborde sur sa
     voisine. Le vocabulaire est decide ici parce que les sections s'ecrivent
@@ -1423,37 +1572,36 @@ def plan_du_cours(moteur, modele, cle, cle_env,
     """
     consigne = SAUT.join([
         "Tu prepares le plan d'un cours a partir des sources fournies.",
-        f"Donne entre {PARTIES_MINI} et {PARTIES_MAXI - 4} grandes parties, sous la "
-        f"forme `## 1. Titre`, chacune suivie de ses {SOUS_PARTIES} sous-parties "
-        "sous la forme `### 1.1 Titre`. Suis l'ordre du prof et reprends ses "
-        "intitules. N'inclus PAS les sections de fin (Vocabulaire, Recap, "
-        "Auto-test, Sources).",
-        "Les titres annoncent ce qu'on y apprend : l'etudiant qui rouvre ce "
-        "cours dans trois mois doit retrouver une notion en lisant le plan, "
-        "sans ouvrir les parties. Evite « Generalites », « Introduction », "
-        "« Notions de base ».",
-        "Termine par une derniere ligne, exactement sous cette forme :",
+        f"Entre {PARTIES_MINI} et {PARTIES_MAXI - 4} parties `## 1. Titre`, chacune "
+        f"suivie de ses {SOUS_PARTIES} sous-parties `### 1.1 Titre`, dans l'ordre "
+        "du prof et avec ses intitules. Sans les sections de fin (Vocabulaire, "
+        "Recap, Auto-test, Sources).",
+        *(["Au bout de chaque ligne `##`, entre crochets, les numeros des "
+           "sources qu'elle couvre : `## 1. Titre [S1-S4, S9]`. Chaque source "
+           "[S#] doit etre citee par au moins une partie."] if numerote else []),
+        "Chaque titre annonce ce qu'on y apprend : dans trois mois, l'etudiant "
+        "retrouve une notion en lisant le seul plan. Pas de « Generalites », "
+        "« Introduction », « Notions de base ».",
+        "Derniere ligne, exactement :",
         "VOCABULAIRE: terme1, terme2, terme3",
-        f"en y mettant entre {VOCAB_MINI} et {VOCAB_MAXI} termes, pas un de "
-        "plus, ranges dans l'ordre ou le cours les rencontre. Un seul critere "
-        "d'admission : sans ce terme, le lecteur ne peut pas comprendre la "
-        "suite du cours. Dans le doute, tu n'en mets pas. Un mot du langage "
-        "courant employe dans son sens courant n'en est jamais un "
-        "(« bancaire », « telecommunications »). Et si deux mots du meme "
-        "registre jouent le meme role, soit les deux entrent, soit aucun. "
-        "Aucun autre texte, aucun commentaire.",
+        f"avec {VOCAB_MINI} a {VOCAB_MAXI} termes, pas un de plus, dans l'ordre "
+        "ou le cours les rencontre. Seul critere : sans ce terme, le lecteur ne "
+        "comprend pas la suite ; dans le doute, non. Jamais un mot courant dans "
+        "son sens courant (« bancaire », « telecommunications ») ; deux mots du "
+        "meme registre au meme role entrent ensemble ou pas du tout. Aucun autre "
+        "texte.",
     ])
     try:
         brut = repondre(moteur, modele, cle, consigne, base, cle_env=cle_env,
                         max_jetons=MAX_JETONS_PLAN)
     except (RuntimeError, urllib.error.URLError) as e:
         dire(f"plan indisponible ({e})")
-        return [], []
+        return [], [], {}
     plan = plan_hierarchique(brut)
     if len(plan) < PARTIES_MINI:
         dire(f"plan inexploitable, {len(plan)} partie(s) reconnue(s)")
-        return [], []
-    return plan, vocabulaire_du_plan(brut)
+        return [], [], {}
+    return plan, vocabulaire_du_plan(brut), sources_du_plan(brut)
 
 
 def _plan_en_texte(plan: list[tuple[str, list[str]]]) -> list[str]:
@@ -1491,50 +1639,15 @@ def _demander_section(moteur, modele, cle, cle_env, systeme, base: str,
         "===== TA TACHE =====",
         "Redige UNIQUEMENT « " + titre + " », et rien d'autre.",
         situe,
-        "Commence par la ligne `" + niveau + " " + titre + "`, puis developpe-la : "
-        "schemas, etapes numerotees, tableaux, exemples chiffres, encadres.",
-        "N'ecris pas l'en-tete YAML, ni les autres sections, ni les sections de fin.",
-        f"Vise environ {mots_cible} mots pour cette section : ni resumee au point "
-        "de perdre le fond, ni gonflee au-dela de ce que le sujet demande.",
-        "",
-        "Deroule chaque notion dans cet ordre, sans sauter d'etape : l'intuition "
-        "en une phrase simple (une analogie du quotidien aide), puis la "
-        "decomposition etape par etape et numerotee, puis un exemple concret. "
-        "Le cas limite ou le piege ne vient qu'apres, et seulement s'il sert.",
-        "",
-        "Aere : un schema ```mermaid```, un tableau, des etapes numerotees ou "
-        "une liste courte passent avant le texte suivi. Aucun paragraphe de "
-        "plus de 4 lignes -- au-dela, coupe-le ou convertis-le. Si la section "
-        "decrit un processus, un cycle, une hierarchie ou une comparaison, "
-        "fais-en un schema au lieu de le raconter, et ne redis pas en prose ce "
-        "que le schema montre deja.",
-        "",
-        "Termine la section par un encadre `> [!tip] À retenir` de deux ou "
-        "trois lignes, qui se suffit a lui-meme : c'est ce que l'etudiant "
-        "relira en survol dans trois mois sans rouvrir le reste du cours.",
-        "",
-        "Ce que les sources ne disent pas et que tu ajoutes de toi-meme (exemple "
-        "invente, rappel, mise en garde, analogie) va dans un encadre "
-        "`> [!note] Complément` : l'etudiant doit voir d'un coup d'oeil ce qui "
-        "vient de son prof et ce qui vient de toi. Ce qui est dans les sources "
-        "reste en dehors de ces encadres. Un complement eclaire la notion en "
-        "mots simples ; il ne cite jamais une norme ou un sigle absent des "
-        "sources pour faire savant.",
-        "",
-        "Chaque encadre a un type, et le type porte le sens -- il n'est pas "
-        "decoratif. Utilise celui qui convient : `> [!example]` pour un cas "
-        "concret, `> [!tip]` pour le point cle a retenir, `> [!definition]` "
-        "pour un concept a poser avant la suite, `> [!rappel]` pour un acquis "
-        "anterieur qu'on reactive, `> [!theoreme]` pour un enonce formel, "
-        "`> [!demonstration]` pour un raisonnement pas-a-pas, `> [!danger]` "
-        "pour le piege classique a l'examen, `> [!loi]` pour l'enonce "
-        "fondateur qui structure tout le cours -- celui-la, une fois dans le "
-        "cours entier, pas une de plus.",
-        "",
-        "Quatre encadres au maximum pour cette section, le `À retenir` et le "
-        "`Complément` compris. Le reste de la section vit en listes, tableaux "
-        "et schemas. Si tout est encadre, plus rien ne ressort : l'encadre ne "
-        "vaut que par ce qu'il laisse en dehors de lui.",
+        "Commence par la ligne `" + niveau + " " + titre + "`. Pas d'en-tete "
+        "YAML, ni d'autres sections, ni de sections de fin.",
+        f"Vise environ {mots_cible} mots : ni resumee au point de perdre le "
+        "fond, ni gonflee au-dela de ce que le sujet demande.",
+        "Termine par son `> [!tip] À retenir` de deux ou trois lignes. Ce qui "
+        "vient des sources reste hors des `> [!note] Complément`, reserves a "
+        "ce que tu ajoutes. Quatre encadres au plus, `À retenir` et "
+        "`Complément` compris : le reste vit en listes, tableaux et schemas -- "
+        "un encadre ne vaut que par ce qu'il laisse en dehors de lui.",
         "",
         ("Vocabulaire du cours, deja reserve pour la section finale : ne redefinis "
          "aucun de ces termes, fais-leur un lien [[#Vocabulaire à retenir|terme]] "
@@ -1565,26 +1678,17 @@ def _sections_de_fin(moteur, modele, cle, cle_env, systeme, corps: str,
         "les numeroter :",
         "## Vocabulaire à retenir", "## Récap", "## Auto-test", "## Sources", "",
         "Rien d'autre : ni en-tete YAML, ni partie du corps.",
-        f"Vise environ {MOTS_CIBLE_FIN} mots au total pour ces quatre sections : "
-        "le vocabulaire est un tableau compact, le recap va a l'essentiel, l'auto-test "
-        "reste court.",
+        f"Environ {MOTS_CIBLE_FIN} mots au total : tableau compact, recap a "
+        "l'essentiel, auto-test court.",
         "",
-        "Chaque definition du tableau est TRIVIALE : une phrase courte, des mots "
-        "de tous les jours, suivie d'un exemple concret. Ne definis jamais un "
-        "terme par un autre terme technique. Une definition qu'un debutant ne "
-        "comprend pas est a reecrire, meme si elle est exacte.",
-        "Ecarte du tableau tout mot du langage courant employe dans son sens "
-        "courant (« bancaire », « telecommunications ») : mieux vaut dix lignes "
-        "qu'on lit que quarante qu'on saute.",
-        "Le `## Récap` est fait pour la relecture rapide, la veille de l'examen : "
-        "des points cles reperables d'un coup d'oeil, en liste ou en tableau, "
-        "pas un paragraphe.",
+        "Le tableau suit la charte (definitions triviales, pas de mot courant) ; "
+        "le `## Récap` se relit la veille de l'examen : points cles en liste ou "
+        "tableau, pas de paragraphe.",
         "",
         "Fichiers lus, pour la section Sources : " + ", ".join(sources),
-        ("Termes marques dans le corps. Reprends-les dans le tableau de "
-         "vocabulaire DANS CET ORDRE EXACT, qui est celui de leur apparition "
-         "dans le cours : ne les trie ni par ordre alphabetique ni autrement, "
-         "l'etudiant doit les retrouver en suivant sa page.\n  "
+        ("Termes du tableau, DANS CET ORDRE EXACT (celui de la page, ni "
+         "alphabetique ni autre : l'etudiant les retrouve en suivant sa "
+         "page) :\n  "
          + ", ".join(termes)) if termes else "",
     ])
     return nettoyer(repondre(moteur, modele, cle, systeme, demande_fin,
@@ -1630,18 +1734,21 @@ def assembler_corps(taches: list[tuple[str, str | None]],
 def rediger_par_paquets(moteur, modele, cle, cle_env, systeme, base: str,
                         matiere: str, type_: str, titre: str,
                         sources: list[str], n_pdf: int, n_photos: int,
-                        n_autres: int = 0) -> str:
+                        n_autres: int = 0, systeme_section: str | None = None) -> str:
     """Le cours section par section, toutes ecrites en parallele.
 
     Le sequentiel consommait 1 a 2 requetes par minute contre un plafond de 20 :
     le temps perdu n'etait pas du quota, c'etait la file indienne.
 
-    ponytail: les sources repartent en entier a chaque appel. C'est le plus simple
-    et ca tient dans les quotas mesures ; si ca coince, le plan sait quelles pages
-    alimentent quelle section et permettrait de n'envoyer que celles-la.
+    Chaque section ne recoit que les sources de sa partie (cf.
+    sources_par_partie) : les renvoyer toutes a chaque appel faisait l'essentiel
+    des jetons d'un cours, et du quota gratuit.
     """
     dire("Plan du cours", REDACTION_DEBUT)
-    plan, vocabulaire = plan_du_cours(moteur, modele, cle, cle_env, base)
+    entete, unites = decouper_sources(base)
+    plan, vocabulaire, refs = plan_du_cours(
+        moteur, modele, cle, cle_env,
+        recoudre(entete, unites, numeros=True) if unites else base, bool(unites))
     if not plan:
         # sans plan, pas de sections : mieux vaut un cours en un appel qu'aucun cours
         dire("retour a la redaction en un seul appel")
@@ -1652,6 +1759,12 @@ def rediger_par_paquets(moteur, modele, cle, cle_env, systeme, base: str,
     dire(f"{len(plan)} parties, {len(taches)} sections, "
          f"{len(vocabulaire)} termes au vocabulaire, ~{mots_par_section} mots/section")
     dire(" | ".join(partie for partie, _ in plan))
+    parts = sources_par_partie(plan, refs, len(unites))
+    bases = {p: base if ids is None else recoudre(entete, unites, ids)
+             for p, ids in parts.items()}
+    dire("sources par partie : " + ", ".join(
+        "toutes" if ids is None else str(len(ids)) for ids in parts.values())
+        + f" / {len(unites)}")
 
     def ecrire(tache: tuple[str, str | None]) -> str:
         """Une section, avec sa seconde chance. Ne leve jamais : un trou silencieux
@@ -1660,8 +1773,9 @@ def rediger_par_paquets(moteur, modele, cle, cle_env, systeme, base: str,
         cible = sous or partie
         for reste in (True, False):
             try:
-                return _demander_section(moteur, modele, cle, cle_env, systeme,
-                                         base, plan, partie, sous, vocabulaire,
+                return _demander_section(moteur, modele, cle, cle_env,
+                                         systeme_section or systeme, bases[partie],
+                                         plan, partie, sous, vocabulaire,
                                          mots_par_section, None)
             except Exception as e:
                 if reste:
@@ -1824,7 +1938,8 @@ def fabriquer(sources: Path, sortie: Path, matiere: str, type_: str, titre: str,
         md = rediger_par_paquets(
             moteur, modele, cle, cle_env, consigne_systeme(langue), base,
             matiere, type_, titre,
-            [f.name for f in fichiers], len(pdfs), len(photos), len(textes_autres))
+            [f.name for f in fichiers], len(pdfs), len(photos), len(textes_autres),
+            consigne_systeme(langue, section=True))
     else:
         md = nettoyer(repondre(
             moteur, modele, cle, consigne_systeme(langue), base,
@@ -1856,6 +1971,18 @@ def _self_test() -> None:
                   "> [!note] Complément", f"{VOCAB_MINI} et {VOCAB_MAXI} termes"):
         assert exige in consigne, f"charte incomplete : {exige}"
 
+    # la version section garde la forme (encadres, visuels, charte) et perd ce
+    # qui parle du cours entier : lire des fichiers, l'en-tete YAML, la fin
+    sec = consigne_systeme("fr", section=True)
+    for garde in ("### 6. Les encadrés", "### 7. Images", "#### Liens internes",
+                  "## Règles", "CHARTE NON NEGOCIABLE", "QUI TU ES"):
+        assert garde in sec, f"section : {garde} a disparu"
+    for parti in ("## Entrée", "### 2. Lecture", "scratchpad", "#### Fin de document",
+                  "### 9. Sortie", "en-tete YAML compris"):
+        assert parti not in sec, f"section : {parti} devait sauter"
+    assert len(sec) < len(consigne) * 0.85, (len(sec), len(consigne))
+    assert "200 à 400 mots" not in sec, "la cible chiffree de la section prime"
+
     consigne_en = consigne_systeme("en")
     assert "en anglais" in consigne_en
 
@@ -1886,13 +2013,13 @@ def _self_test() -> None:
     assert "travaux diriges" in d
     assert "![[Maths/_img/series/p1.jpg]]" in d
     assert "===== PDF : d.pdf =====" in d
-    assert "affiche l'image de la diapo" not in d, "aucune diapo en image ici"
+    assert "Affiche l'image" not in d, "aucune diapo en image ici"
     avec = demande("Maths", "CM", "S", [], [("d.pdf", "--- page 1 ---  [SCHEMA OU "
                                             "FIGURE, a afficher si la notion est "
                                             "traitee ici : ![[d/p01.webp]]]")], [])
-    assert "affiche l'image de la diapo" in avec
+    assert "Affiche l'image" in avec
     # sans diapo illustree, la consigne d'affichage ne part pas
-    assert "affiche l'image de la diapo" not in demande("M", "CM", "S", [],
+    assert "Affiche l'image" not in demande("M", "CM", "S", [],
                                                         [("d.pdf", "page 1")], [])
 
     # un fichier "autre" (code, .md...) part en bloc de code, langue devinee
@@ -1921,6 +2048,23 @@ def _self_test() -> None:
         gros.write_text("a" * (MAX_OCTETS_FICHIER + 500), encoding="utf-8")
         rendu = texte_du_fichier(gros)
         assert len(rendu) < MAX_OCTETS_FICHIER + 100 and "tronque" in rendu, rendu
+
+        # gabarit de diapo : retire des pages, dit une fois en tete ; seule la
+        # page a figure garde son lien d'image
+        import pymupdf
+        diapos = pymupdf.open()
+        for i in range(1, 6):
+            diapos.new_page().insert_text(
+                (50, 50), f"Univ X - Genie logiciel\nNotion {i}\n{i} / 5")
+        chemin_pdf = Path(tmp) / "diapos.pdf"
+        diapos.save(chemin_pdf)
+        rendu = texte_du_pdf(chemin_pdf, {2: ("a/p2.png", True), 3: ("a/p3.png", False)})
+        assert rendu.count("Univ X") == 1 and rendu.startswith("[Repete"), rendu
+        assert all(f"Notion {i}" in rendu for i in range(1, 6)), rendu
+        assert "/ 5" not in rendu, rendu
+        assert PAGINATION.match("Page 3 sur 42") and not PAGINATION.match("Notion 3")
+        assert "![[a/p2.png]]" in rendu and "a/p3.png" not in rendu, rendu
+        assert lignes_repetees(["a", "a", "a"]) == set(), "trop peu de pages"
 
     assert slug("Génie Logiciel M1") == "genie-logiciel-m1"
     assert slug("!!") == "cours"
@@ -1978,6 +2122,31 @@ def _self_test() -> None:
     brut = SAUT.join(["Voici le plan :", "## 1. Intro", "### 1.1 Contexte",
                       "### 1.2 Enjeux", "## 2. Modeles",
                       "VOCABULAIRE: cascade, spirale , cascade"])
+    # sources par partie : la demande se decoupe en unites et se recoud a
+    # l'identique ; le plan cite des [S#], chaque partie ne recoit que les siens
+    d = demande("M", "CM", "T", [("p1.jpg", "notes\nsuite")],
+                [("d.pdf", "[Repete sur chaque page, retire du texte : Univ]\n\n"
+                           "--- page 1 ---\nA\n\n--- page 2 ---\nB"),
+                 ("e.pdf", "--- page 1 ---\nC")], [], [("f.py", "x = 1")])
+    entete, unites = decouper_sources(d)
+    assert len(unites) == 5, unites          # 2 + 1 pages, 1 photo, 1 fichier
+    serre = lambda t: [l for l in t.split(SAUT) if l.strip()]   # au blanc pres
+    assert serre(recoudre(entete, unites)) == serre(d), recoudre(entete, unites)
+    assert "[S3] --- page 1 ---\nC" in recoudre(entete, unites, numeros=True)
+    une = recoudre(entete, unites, {2})
+    assert "Univ" in une and "B" in une and "\nA" not in une and "notes" not in une, une
+    assert numeros("S1-S3, S7, s9–10") == {1, 2, 3, 7, 9, 10}
+    brut_s = "## 1. Piles [S1-S2]\n### 1.1 LIFO [S1]\n## 2. Files [S4]\n## 3. Arbres"
+    assert plan_hierarchique(brut_s) == [("1. Piles", ["1.1 LIFO"]), ("2. Files", []),
+                                         ("3. Arbres", [])], plan_hierarchique(brut_s)
+    refs = sources_du_plan(brut_s)
+    assert refs == {"1. piles": {1, 2}, "2. files": {4}}, refs
+    parts = sources_par_partie(plan_hierarchique(brut_s), refs, 5)
+    # S3 non citee suit sa voisine d'avant (Piles), S5 suit Files ; Arbres sans
+    # etiquette recoit tout
+    assert parts == {"1. Piles": {1, 2, 3}, "2. Files": {4, 5}, "3. Arbres": None}, parts
+    assert set(sources_par_partie([("A", [])], {}, 3).values()) == {None}
+
     plan2 = plan_hierarchique(brut)
     assert plan2 == [("1. Intro", ["1.1 Contexte", "1.2 Enjeux"]),
                      ("2. Modeles", [])], plan2
