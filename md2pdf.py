@@ -30,6 +30,7 @@ from markdown_it import MarkdownIt
 COMMANDES_NAVIGATEUR = [
     "chrome", "google-chrome", "google-chrome-stable", "chromium",
     "chromium-browser", "msedge", "microsoft-edge",
+    "brave", "brave-browser",
 ]
 NAVIGATEURS = [
     Path(r"C:\Program Files\Google\Chrome\Application\chrome.exe"),

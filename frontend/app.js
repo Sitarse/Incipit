@@ -1734,16 +1734,26 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   $('btn-ajouter').addEventListener('click', () => fichierInput.click());
-  fichierInput.addEventListener('change', async () => {
-    if (!fichierInput.files.length) return;
+  const envoyerFichiers = async (fichiers) => {
+    if (!fichiers.length) return;
     const form = new FormData();
     form.append('matiere', etat.matiere);
     form.append('type', etat.type);
     form.append('titre', etat.titre);
-    [...fichierInput.files].forEach((f, i) => form.append(`file${i}`, f));
+    [...fichiers].forEach((f, i) => form.append(`file${i}`, f));
     await fetch('/api/fichiers', { method: 'POST', body: form });
-    fichierInput.value = '';
     rafraichir();
+  };
+  fichierInput.addEventListener('change', async () => {
+    await envoyerFichiers(fichierInput.files);
+    fichierInput.value = '';
+  });
+  // Sans ces handlers, un fichier depose est traite comme un lien a ouvrir :
+  // la webview le renvoie au navigateur systeme au lieu de l'ajouter au cours.
+  document.addEventListener('dragover', (e) => e.preventDefault());
+  document.addEventListener('drop', (e) => {
+    e.preventDefault();
+    envoyerFichiers(e.dataTransfer.files);
   });
 
   // Plusieurs liens colles d'un coup (separes par des espaces) partent un par
