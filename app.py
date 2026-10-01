@@ -1067,6 +1067,11 @@ def main() -> None:
     # desactiver ce bac a sable precis n'expose aucun contenu distant.
     if sys.platform.startswith("linux"):
         os.environ.setdefault("QTWEBENGINE_DISABLE_SANDBOX", "1")
+        # Le Qt embarque par PyQt n'obtient souvent aucun contexte OpenGL
+        # (EGL Wayland comme GLX echouent, ex. portable hybride Intel/NVIDIA) :
+        # QQuickWidget n'a alors pas de QRhi et la fenetre reste vide. Le rendu
+        # logiciel suffit largement pour une page de formulaire.
+        os.environ.setdefault("QT_QUICK_BACKEND", "software")
 
     try:
         import webview

@@ -60,6 +60,8 @@ CHROME_EXECUTABLES = {
         "chromium",
         "chromium-browser",
         "msedge",
+        "brave",
+        "brave-browser",
     ],
 }
 
@@ -211,7 +213,7 @@ def afficher_instructions_chrome() -> None:
         print("  - Ubuntu/Debian : sudo apt install google-chrome-stable")
         print("    ou : sudo apt install chromium-browser")
         print("  - Fedora : sudo dnf install google-chrome-stable")
-        print("  - Arch : sudo pacman -S google-chrome")
+        print("  - Arch : sudo pacman -S chromium")
         print("  - Snap : sudo snap install chromium")
         print("  - Flatpak : flatpak install flathub com.google.Chrome")
 

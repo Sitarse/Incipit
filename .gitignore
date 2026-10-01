@@ -25,12 +25,9 @@ workspace/
 config/messages_masques.json
 # Cours generes, si quelqu'un pointe la destination dans le projet
 *.pdf
-!docs/**/*.pdf
 
-# ============================================================================
-#  Notes privees -- reflexion personnelle, pas de la documentation du projet
-# ============================================================================
-docs/legal-notes.md
+# Notes et docs internes : jamais dans le depot
+docs/
 
 # ============================================================================
 #  Sorties d'execution
@@ -96,5 +93,3 @@ launchers/Incipit.app/
 AGENTS.md
 CLAUDE.md
 
-# Docs internes
-docs/free-tier-design.md
