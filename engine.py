@@ -514,11 +514,24 @@ def analyser(ligne: str) -> list[tuple[str, object]]:
     """Traduit une ligne de generator.py en messages (genre, charge).
 
     generator.py ecrit `[42] Texte` pour l'avancement et `. texte` pour le journal.
+    `@{...}` est l'activite de l'IA (cf. generator.signaler) : chaque appel, son
+    modele, ce qui part et revient, resume en une ligne de journal ; le texte qui
+    arrive en direct (flux) n'y va pas, il noierait le reste.
     Tout le reste (trace d'erreur, sortie de uv) est montre brut plutot que jete.
     """
     ligne = ligne.strip()
     if not ligne:
         return []
+    if ligne.startswith("@{"):
+        try:
+            e = json.loads(ligne[1:])
+        except json.JSONDecodeError:
+            return []
+        texte = {"appel": f"-> {e.get('etape')} ({e.get('modele') or e.get('moteur')}, "
+                          f"{e.get('envoye', 0)} caracteres envoyes)",
+                 "fini": f"ok : {e.get('mots', 0)} mots recus en {e.get('duree')} s",
+                 "echec": f"echec : {e.get('erreur')}"}.get(e.get("t"))
+        return [("log", texte), ("detail", texte)] if texte else []
     if m := re.match(r"\[(\d{1,3})\]\s*(.+)", ligne):
         return [("phase", (m.group(2), min(100, int(m.group(1)))))]
     texte = ligne[2:] if ligne.startswith(". ") else ligne[:200]
@@ -856,6 +869,11 @@ def _self_test() -> None:
     assert analyser(". p1.jpg : 210 mots")[0] == ("log", "p1.jpg : 210 mots")
     assert analyser("Traceback (most recent call last):")[0][0] == "log"
     assert analyser("") == []
+    # l'activite de l'IA : resumee en journal, le flux en direct ecarte
+    assert analyser('@{"t": "appel", "id": 1, "etape": "Plan du cours", "modele": "m", "envoye": 12}')[0] \
+        == ("log", "-> Plan du cours (m, 12 caracteres envoyes)")
+    assert analyser('@{"t": "flux", "id": 1, "fin": "..."}') == []
+    assert analyser("@{pas du json") == []
 
     cmd = commande_generer(uv, Path("/s"), Path("/o/CM - X.md"), "Maths", "TD", "X",
                            ["Maths/_img/x/p1.jpg"], "gratuit", "meta/llama-3.3-70b-instruct")

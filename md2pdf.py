@@ -13,6 +13,7 @@ Mise en page aeree facon diapo : titres de partie en banniere, corps en retrait,
 vocabulaire en couleur. L'impression est faite par Chrome, pas de LaTeX a installer.
 """
 
+import os
 import re
 import shutil
 import subprocess
@@ -23,6 +24,24 @@ from pathlib import Path
 from urllib.parse import quote
 
 from markdown_it import MarkdownIt
+
+# KaTeX et Mermaid viennent du CDN : sans internet, le PDF sortait sans formules
+# ni schemas. INCIPIT_VENDOR : un dossier ou l'appli qui nous lance (Hitodama)
+# en garde une copie -- prise en priorite, le CDN reste le repli.
+CDN = {
+    "katex/katex.min.css": "https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.css",
+    "katex/katex.min.js": "https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.js",
+    "katex/contrib/auto-render.min.js":
+        "https://cdn.jsdelivr.net/npm/katex@0.16/dist/contrib/auto-render.min.js",
+    "mermaid.min.js": "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js",
+}
+
+
+def ressource(nom: str) -> str:
+    """L'adresse d'une bibliotheque du rendu : la copie locale si elle existe."""
+    if (dossier := os.environ.get("INCIPIT_VENDOR")) and (local := Path(dossier) / nom).is_file():
+        return local.resolve().as_uri()
+    return CDN[nom]
 
 # Cherches dans l'ordre, apres un which() sur les noms de commande (cf.
 # trouver_navigateur) : le PDF sort d'un Chrome/Edge headless, quel que soit
@@ -626,14 +645,14 @@ def page(corps: str, meta: dict[str, str], titre_secours: str) -> str:
 
     return f"""<!doctype html>
 <html lang="fr"><head><meta charset="utf-8"><title>{titre}</title>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.css">
+<link rel="stylesheet" href="{ressource('katex/katex.min.css')}">
 <style>{CSS}</style></head>
 <body>
 {"".join(bloc)}
 {corps}
-<script src="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/katex@0.16/dist/contrib/auto-render.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<script src="{ressource('katex/katex.min.js')}"></script>
+<script src="{ressource('katex/contrib/auto-render.min.js')}"></script>
+<script src="{ressource('mermaid.min.js')}"></script>
 <script>
   document.querySelectorAll('details').forEach(d => d.open = true);
   if (window.mermaid) {{
@@ -799,6 +818,20 @@ def _self_test() -> None:
     assert "↩" in avec
     # sans ancre dans le corps, pas de fleche morte
     assert "retour" not in tab, tab
+
+    # copie locale de KaTeX/Mermaid prise avant le CDN, le CDN sinon
+    with tempfile.TemporaryDirectory() as tmp:
+        vrai = os.environ.get("INCIPIT_VENDOR")
+        os.environ["INCIPIT_VENDOR"] = tmp
+        try:
+            assert ressource("mermaid.min.js").startswith("https://cdn.jsdelivr.net/")
+            (Path(tmp) / "mermaid.min.js").write_text("//", encoding="utf-8")
+            assert ressource("mermaid.min.js").startswith("file:///"), ressource("mermaid.min.js")
+            assert 'src="file:///' in page("<p>x</p>", {}, "T")
+        finally:
+            os.environ.pop("INCIPIT_VENDOR")
+            if vrai is not None:
+                os.environ["INCIPIT_VENDOR"] = vrai
 
     assert trouver_navigateur().is_file()
     print("self-test OK :", trouver_navigateur().name)

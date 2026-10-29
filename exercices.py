@@ -33,8 +33,8 @@ import tempfile
 import unicodedata
 from pathlib import Path
 
-from generator import CHARTE, DEFAUT, MOTEURS, PERSONA, cle_du_moteur, \
-    modele_retenu, nettoyer, probleme, repondre
+from generator import CHARTE, DEFAUT, MOTEURS, PERSONA, cle_du_moteur, etape, \
+    garder_version, modele_retenu, nettoyer, probleme, repondre
 
 # Langues supportées par l'application (code ISO 639-1)
 LANGUES_APP = {
@@ -398,6 +398,77 @@ def consigne_fiche(langue: str = "fr") -> str:
 
 def demande_fiche_ou_cartes(meta: dict, md: str) -> str:
     return f"Matiere : {meta['matiere']}\nCours : {meta['titre']}\n\n" + md
+
+
+# ---------------------------------------------------------------- flash cards
+# Prevues des le depart (MAX_JETONS_CARTES, demande_fiche_ou_cartes) mais jamais
+# ecrites : le cours, la fiche et le TP existaient, pas les cartes. Ce sont elles
+# qui servent la relecture permanente (« dans trois mois, sans souvenir du
+# reste ») : une question, une reponse, revues a intervalles croissants par
+# l'appli qui les fait passer (Hitodama), ou par le plugin Spaced Repetition
+# d'Obsidian, qui lit le .md ecrit a cote du cours.
+CARTES_MINI, CARTES_MAXI = 12, 25
+CHAMPS_CARTE = ("Notion", "Recto", "Verso")
+
+
+def consigne_cartes(langue: str = "fr") -> str:
+    noms_langues = {"fr": "français", "en": "anglais"}
+    return (
+        f"Tu fabriques des cartes de revision (flash cards) a partir du cours, en "
+        f"{noms_langues.get(langue, 'français')}.\n\n"
+        + PERSONA + "\n\n" + CHARTE + "\n\n"
+        "Objectif : des cartes relues des dizaines de fois sur un semestre, a "
+        "intervalles de plus en plus longs. Une carte qui demande de reflechir "
+        "une seconde se retient ; une carte vague ou a rallonge ne se retient pas.\n"
+        f"- Entre {CARTES_MINI} et {CARTES_MAXI} cartes, dans l'ordre du cours, une "
+        "seule notion par carte.\n"
+        "- Recto : UNE question courte et precise, qui appelle une seule reponse "
+        "(definition, formule, etape d'une methode, difference entre deux notions "
+        "voisines, piege classique, exemple a reconnaitre). Jamais « Parle de... » "
+        "ni « Que sais-tu sur... ».\n"
+        "- Verso : la reponse en une a trois lignes, en mots simples, avec un "
+        "mini exemple quand il aide. Formules en LaTeX ($...$).\n"
+        "- Chaque terme du tableau « Vocabulaire à retenir » et chaque « À "
+        "retenir » du cours a sa carte ; rien de ce qui n'est pas dans le cours.\n"
+        "Format de sortie EXACT, sans rien avant ni apres :\n\n"
+        "### Carte 1\nNotion: <titre de la partie du cours>\nRecto: <question>\n"
+        "Verso: <reponse>\n### Carte 2\n..."
+    )
+
+
+def _champ_carte(bloc: str, nom: str) -> str:
+    suite = "|".join(CHAMPS_CARTE)
+    m = re.search(rf"{nom}\s*:\s*(.+?)(?=\n\s*(?:{suite})\s*:|\Z)", bloc,
+                  re.IGNORECASE | re.DOTALL)
+    return m.group(1).strip() if m else ""
+
+
+def parser_cartes(brut: str) -> list[dict]:
+    """Sortie du modele -> [{notion, recto, verso}], sans les cartes a moitie
+    remplies (un recto sans verso ne s'apprend pas) ni les doublons."""
+    cartes, vus = [], set()
+    for m in re.finditer(r"^###\s*Carte.*?$(.*?)(?=^###\s*Carte|\Z)", brut,
+                         re.MULTILINE | re.DOTALL):
+        recto, verso = _champ_carte(m.group(1), "Recto"), _champ_carte(m.group(1), "Verso")
+        if not recto or not verso or recto.casefold() in vus:
+            continue
+        vus.add(recto.casefold())
+        cartes.append({"notion": _champ_carte(m.group(1), "Notion"),
+                       "recto": recto, "verso": verso})
+    return cartes[:CARTES_MAXI]
+
+
+def cartes_en_markdown(meta: dict, cartes: list[dict]) -> str:
+    """Les cartes lisibles dans Obsidian, au format du plugin Spaced Repetition
+    (question, `?` seul sur sa ligne, reponse ; cartes separees par une ligne
+    vide), sous le tag #flashcards qu'il cherche."""
+    lignes = ["---", f"matiere: {meta['matiere']}", f"titre: {meta['titre']}",
+              "type: Cartes", "---", "", f"# Cartes · {meta['titre']}", "", "#flashcards", ""]
+    for c in cartes:
+        # une ligne vide dans une reponse couperait la carte en deux pour le plugin
+        verso = re.sub(r"\n\s*\n", "\n", c["verso"].strip())
+        lignes += [c["recto"].replace("\n", " ").strip(), "?", verso, ""]
+    return "\n".join(lignes)
 
 
 # --------------------------------------------------------- lecture des exercices
@@ -1127,7 +1198,7 @@ def fabriquer(source: Path, niveau: str, cle_env: Path, moteur: str,
              modele: str | None, langue: str = "fr",
              faire_tp: bool = True, faire_fiche: bool = True,
              focus: str = "", questions: int = QUESTIONS_DEFAUT,
-             uv: str | None = None) -> None:
+             uv: str | None = None, faire_cartes: bool = False) -> None:
     """Lit le cours, genere les supports demandes, les ecrit a cote du cours."""
     if souci := probleme(moteur, cle_env):
         raise SystemExit(souci)
@@ -1147,12 +1218,13 @@ def fabriquer(source: Path, niveau: str, cle_env: Path, moteur: str,
         # Python dedans, pas de fonction a completer (cf. cours_avec_code).
         avec_code = cours_avec_code(md)
         print(". Generation des exercices (TP)"
-              + ("..." if avec_code else " -- sans code, le cours n'en a pas..."))
-        brut = repondre(moteur, modele, cle,
-                        consigne_exercices(langue, avec_code),
-                        demande_exercices(meta, niveau, notions, md, focus,
-                                          questions, avec_code),
-                        cle_env=cle_env, max_jetons=jetons_exos(questions))
+              + ("..." if avec_code else " -- sans code, le cours n'en a pas..."), flush=True)
+        with etape("Exercices du TP"):
+            brut = repondre(moteur, modele, cle,
+                            consigne_exercices(langue, avec_code),
+                            demande_exercices(meta, niveau, notions, md, focus,
+                                              questions, avec_code),
+                            cle_env=cle_env, max_jetons=jetons_exos(questions))
         exos = parser_exercices(nettoyer(brut), avec_code)
         dest_py = chemin_tp(source, "_exercices.py")
         dest_py.parent.mkdir(parents=True, exist_ok=True)
@@ -1192,14 +1264,34 @@ def fabriquer(source: Path, niveau: str, cle_env: Path, moteur: str,
         print(f". Lanceur ecrit : {lanceur.name}")
 
     if faire_fiche:
-        print(". Generation de la fiche de revision...")
-        fiche = nettoyer(repondre(moteur, modele, cle, consigne_fiche(langue),
-                                  demande_fiche_ou_cartes(meta, md),
-                                  cle_env=cle_env, max_jetons=MAX_JETONS_FICHE))
+        print(". Generation de la fiche de revision...", flush=True)
+        with etape("Fiche de révision"):
+            fiche = nettoyer(repondre(moteur, modele, cle, consigne_fiche(langue),
+                                      demande_fiche_ou_cartes(meta, md),
+                                      cle_env=cle_env, max_jetons=MAX_JETONS_FICHE))
         dest_fiche = source.with_name(source.stem + "_fiche.md")
+        garder_version(dest_fiche)
         dest_fiche.write_text(fiche, encoding="utf-8")
-        print(f". Fiche ecrite : {dest_fiche}")
+        print(f". Fiche ecrite : {dest_fiche}", flush=True)
         faits.append(dest_fiche)
+
+    if faire_cartes:
+        print(". Generation des flash cards...", flush=True)
+        with etape("Flash cards"):
+            brut = repondre(moteur, modele, cle, consigne_cartes(langue),
+                            demande_fiche_ou_cartes(meta, md),
+                            cle_env=cle_env, max_jetons=MAX_JETONS_CARTES)
+        cartes = parser_cartes(nettoyer(brut))
+        if not cartes:
+            raise SystemExit("Aucune carte lisible dans la reponse du modele.")
+        dest_json = chemin_tp(source, "_cartes.json")
+        dest_json.parent.mkdir(parents=True, exist_ok=True)
+        dest_json.write_text(json.dumps(cartes, ensure_ascii=False, indent=2),
+                             encoding="utf-8")
+        dest_md = source.with_name(source.stem + "_cartes.md")
+        dest_md.write_text(cartes_en_markdown(meta, cartes), encoding="utf-8")
+        print(f". {len(cartes)} cartes ecrites : {dest_md}", flush=True)
+        faits += [dest_json, dest_md]
 
     if not faits:
         raise SystemExit("Aucun support demande a generer.")
@@ -1426,6 +1518,23 @@ def _self_test() -> None:
     # ... et sans uv embarque, rien ne change pour les postes deja equipes
     assert lanceur_tp(".tp/Cours_exercices.py", "win32") == bat
 
+    # flash cards : format tolerant, cartes incompletes et doublons ecartes
+    brut = ("Voici les cartes :\n### Carte 1\nNotion: 1. Piles\nRecto: Que veut dire LIFO ?\n"
+            "Verso: Dernier entre, premier sorti.\nComme une pile d'assiettes.\n"
+            "### Carte 2\nRecto: Sans verso ?\n"
+            "### Carte 3\nNotion: 1. Piles\nRecto: que veut dire lifo ?\nVerso: doublon\n"
+            "### Carte 4\nNotion: 2. Files\nRecto: Et FIFO ?\nVerso: Premier entre, premier sorti.")
+    cartes = parser_cartes(brut)
+    assert [c["recto"] for c in cartes] == ["Que veut dire LIFO ?", "Et FIFO ?"], cartes
+    assert cartes[0]["verso"] == "Dernier entre, premier sorti.\nComme une pile d'assiettes."
+    assert cartes[0]["notion"] == "1. Piles"
+    assert parser_cartes("rien d'exploitable") == []
+    for exige in ("QUI TU ES", "CHARTE NON NEGOCIABLE", "### Carte 1"):
+        assert exige in consigne_cartes("fr")
+    rendu = cartes_en_markdown({"matiere": "Algo", "titre": "Piles"},
+                               [{"notion": "", "recto": "Q ?", "verso": "R1\n\nR2"}])
+    assert "#flashcards" in rendu and "\nQ ?\n?\nR1\nR2\n" in rendu, rendu
+
     print("exercices : self-test OK")
 
 
@@ -1455,6 +1564,10 @@ def main() -> None:
                    help="Ne pas generer la fiche de revision (_fiche.md)")
     p.add_argument("--uv", help="chemin du uv embarque a cote de l'executable, "
                                 "ecrit dans le lanceur du TP en dernier recours")
+    p.add_argument("--cartes", action="store_true",
+                   help="Generer aussi les flash cards (_cartes.md, et .tp/_cartes.json)")
+    p.add_argument("--trace", type=Path,
+                   help="dossier ou ecrire la demande et la reponse de chaque appel")
     p.add_argument("--self-test", action="store_true")
     a = p.parse_args()
 
@@ -1463,11 +1576,14 @@ def main() -> None:
         return
     if not a.source:
         p.error("--source est obligatoire")
+    import generator
+    generator.TRACE = a.trace
     fabriquer(a.source, a.niveau, a.cle_env, a.moteur, a.modele, a.langue,
               faire_tp=not a.no_tp, faire_fiche=not a.no_fiche,
-              focus=a.focus, questions=a.questions, uv=a.uv)
+              focus=a.focus, questions=a.questions, uv=a.uv, faire_cartes=a.cartes)
 
 
 if __name__ == "__main__":
-    sys.stdout.reconfigure(encoding="utf-8", errors="replace")   # cp1252 mange les accents
+    # cp1252 mange les accents ; ligne par ligne, l'appli qui lit suit en direct
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace", line_buffering=True)
     main()
