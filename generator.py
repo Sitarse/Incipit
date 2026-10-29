@@ -19,10 +19,12 @@ Deux moteurs, meme pipeline, meme sortie (cf. MOTEURS) :
               (cle perso sur build.nvidia.com, modele au choix dans son
               catalogue -- cf. FOURNISSEURS et ORDRE_GRATUIT).
 
-Sortie sur stdout, une ligne par evenement, lue par engine.py :
+Sortie sur stdout, une ligne par evenement, lue par engine.py (ou Hitodama) :
     [12] Transcription des photos  (2/6)     <- avancement, texte
     . detail libre                           <- journal
+    @{"t": "appel", ...}                     <- activite de l'IA (cf. signaler)
 Lancer :  uv run generator.py --sources DIR --sortie F.md --moteur claude-cli ...
+          uv run generator.py ... --reecrire "2.1 Titre" --consigne "plus d'exemples"
 Test   :  uv run generator.py --self-test
 """
 
@@ -30,14 +32,18 @@ import argparse
 import base64
 import hashlib
 import io
+import itertools
 import json
+import os
 import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 import unicodedata
+from contextlib import contextmanager
 import urllib.error
 import urllib.request
 from collections import namedtuple
@@ -149,6 +155,14 @@ MAX_JETONS_PARTIE = 4000    # plafond de securite ; la cible reelle est calculee
 MOTS_CIBLE_TOTAL = 6500     # plafond : au-dela le cours devient long a lire et
                             # a produire pour un gain de fond marginal
 MOTS_CIBLE_FIN = 700        # part reservee au vocabulaire/recap/auto-test/sources
+# Longueur choisie dans l'interface (--longueur) : le total vise par la redaction
+# par paquets, la part des sections de fin, et la fourchette par section que la
+# methode donne au modele qui ecrit tout le cours d'un appel. "normal" garde les
+# valeurs d'origine ; un chiffre fixe poussait a remplir, pas a expliquer.
+LONGUEURS = {"court": (3500, 500, "120 à 250"),
+             "normal": (6500, 700, "200 à 400"),
+             "detaille": (10000, 900, "350 à 600")}
+FOURCHETTE = LONGUEURS["normal"][2]
 JETONS_PAR_MOT = 3          # marge large sur le francais (mesure ~2.4 sur du texte
                             # mixte) : trop juste tronquerait la section, trop
                             # large ne coute rien tant que le modele suit la cible
@@ -365,11 +379,107 @@ def dire(texte: str, avance: int | None = None) -> None:
         print(f"[{avance}] {texte}" if avance is not None else f". {texte}", flush=True)
 
 
+# ------------------------------------------------------------- activite de l'IA
+# « Voir ce que fait l'IA » : chaque appel au modele -- l'etape, le modele, ce qui
+# part et ce qui revient, la duree, l'echec et sa raison -- sort sur stdout en une
+# ligne `@{json}`, entre les lignes de progression (cf. dire). Avec --trace, la
+# demande complete et la reponse brute de chaque appel sont aussi ecrites dans ce
+# dossier, pour les relire telles que le modele les a recues.
+_ICI = threading.local()          # l'etape en cours, propre a chaque fil (sections paralleles)
+_APPELS = itertools.count(1)
+TRACE: Path | None = None
+
+
+@contextmanager
+def etape(nom: str):
+    """Nomme les appels faits dans ce bloc (« Plan du cours », « Section 2.1 »...)."""
+    avant = getattr(_ICI, "etape", None)
+    _ICI.etape = nom
+    try:
+        yield
+    finally:
+        _ICI.etape = avant
+
+
+def signaler(**evenement) -> None:
+    """Un evenement d'activite, sous le meme verrou que dire : une ligne entiere."""
+    with _PAROLE:
+        print("@" + json.dumps(evenement, ensure_ascii=False), flush=True)
+
+
+def tracer(n: int, nom: str, moteur: str, modele: str | None, systeme: str | None,
+           texte: str, photo: Path | None, reponse: str | None = None,
+           erreur: str | None = None) -> str | None:
+    """Ecrit l'appel n dans TRACE, s'il y en a un. Rend le chemin du fichier."""
+    if TRACE is None:
+        return None
+    try:
+        TRACE.mkdir(parents=True, exist_ok=True)
+        fichier = TRACE / f"{n:02d} - {slug(nom)[:50]}.md"
+        morceaux = [f"# {nom}", "", f"- moteur : {moteur}" + (f" [{modele}]" if modele else ""),
+                    f"- qui a repondu : {MOTEUR_UTILISE or '?'}"]
+        if photo:
+            morceaux.append(f"- photo : {photo}")
+        if systeme:
+            morceaux += ["", "## Consigne systeme", "", systeme]
+        morceaux += ["", "## Demande", "", texte, ""]
+        morceaux += (["## Echec", "", erreur] if erreur is not None
+                     else ["## Reponse", "", reponse or ""])
+        fichier.write_text(SAUT.join(morceaux) + SAUT, encoding="utf-8")
+        return str(fichier)
+    except OSError:
+        return None          # un journal impossible a ecrire n'arrete pas le cours
+
+
+def suivi(moteur: str, modele: str | None, systeme: str | None, texte: str,
+          photo: Path | None, appel, au_fil=None, flux_libre: bool = False) -> str:
+    """Fait `appel(au_fil)` en le signalant : debut, texte qui arrive, fin ou echec.
+
+    `flux_libre` : le moteur diffuse sa reponse de toute facon (le CLI claude) --
+    on peut donc la suivre sans rien changer a l'appel. Ailleurs, demander le
+    flux changerait la requete elle-meme : on ne le suit que s'il etait demande.
+    """
+    n = next(_APPELS)
+    nom = getattr(_ICI, "etape", None) or ("Photo" if photo else "Appel au modele")
+    debut, dernier = time.monotonic(), [0.0]
+    signaler(t="appel", id=n, etape=nom, moteur=moteur, modele=modele or "",
+             envoye=len(systeme or "") + len(texte), photo=photo.name if photo else None)
+
+    def suivre(cumul: str) -> None:
+        if au_fil:
+            au_fil(cumul)
+        if time.monotonic() - dernier[0] >= 1:
+            dernier[0] = time.monotonic()
+            signaler(t="flux", id=n, mots=len(cumul.split()), fin=cumul[-500:])
+
+    try:
+        reponse = appel(suivre if (au_fil or flux_libre) else None)
+    except BaseException as e:
+        signaler(t="echec", id=n, erreur=str(e)[:400] or type(e).__name__,
+                 duree=round(time.monotonic() - debut, 1),
+                 trace=tracer(n, nom, moteur, modele, systeme, texte, photo, erreur=str(e)))
+        raise
+    signaler(t="fini", id=n, recu=len(reponse), mots=len(reponse.split()),
+             duree=round(time.monotonic() - debut, 1), qui=MOTEUR_UTILISE,
+             trace=tracer(n, nom, moteur, modele, systeme, texte, photo, reponse))
+    return reponse
+
+
 # --------------------------------------------------------------- cles et outils
 
-def cle_api(fichier: Path, nom: str) -> str | None:
-    """Lit `set NOM=valeur` dans le fichier de cles (un .bat de `set`)."""
-    if not fichier.is_file():
+# Les reglages se lisent d'abord dans l'environnement, sous ce prefixe : Hitodama
+# y passe ses cles, dechiffrees le temps de l'appel, plutot que de les ecrire en
+# clair dans un fichier (cf. issue #5). Le prefixe evite qu'une variable du meme
+# nom posee par un autre outil (DESTINATION...) ne s'en mele.
+PREFIXE_ENV = "INCIPIT_"
+
+
+def cle_api(fichier: Path | None, nom: str) -> str | None:
+    """Un reglage : `INCIPIT_NOM` dans l'environnement, sinon `set NOM=valeur`
+    dans le fichier de cles (un .bat de `set`)."""
+    if (valeur := os.environ.get(PREFIXE_ENV + nom, "").strip()) and "colle-ta" not in valeur:
+        return re.sub(r"^Bearer\s+", "", valeur, flags=re.I)
+    if not fichier or not fichier.is_file():
         return None
     for ligne in fichier.read_text(encoding="utf-8", errors="replace").splitlines():
         m = re.match(rf"\s*set\s+{re.escape(nom)}\s*=\s*(\S+)", ligne, re.I)
@@ -460,15 +570,29 @@ def modeles_nim(cle: str) -> list[str]:
 
 
 def trouver_claude() -> str | None:
-    """Le CLI `claude`. which() d'abord : le PATH tronque de Windows le rate parfois."""
-    if trouve := shutil.which("claude"):
-        return trouve
+    """Le CLI `claude`, et de preference son vrai executable.
+
+    Sous Windows, l'installation npm met `claude.cmd` en tete du PATH. Un .cmd
+    passe par cmd.exe, qui coupe un argument au premier saut de ligne et refuse
+    une ligne de commande de plus de 8191 caracteres : la consigne du cours
+    (persona, methode, charte : ~20 000 caracteres) n'arrivait jamais entiere, et
+    l'appel echouait sur « La ligne de commande est trop longue ». Le claude.exe
+    livre dans le paquet npm se lance, lui, sans cmd.exe. INCIPIT_CLAUDE : le
+    chemin donne par l'appli qui nous lance (Hitodama sait deja ou il est).
+    """
     nom = "claude.exe" if sys.platform == "win32" else "claude"
-    for c in (Path.home() / ".local" / "bin" / nom,
-              Path.home() / ".claude" / "local" / nom):
-        if c.is_file():
+    candidats = [os.environ.get(PREFIXE_ENV + "CLAUDE", ""),
+                 Path.home() / ".local" / "bin" / nom,
+                 Path.home() / ".claude" / "local" / nom]
+    if os.environ.get("APPDATA"):
+        candidats.append(Path(os.environ["APPDATA"]) / "npm" / "node_modules" /
+                         "@anthropic-ai" / "claude-code" / "bin" / nom)
+    for c in candidats:
+        if c and Path(c).is_file():
             return str(c)
-    return None
+    # which() en dernier : le PATH tronque de Windows le rate parfois, et sous
+    # Windows il rend surtout le claude.cmd ci-dessus
+    return shutil.which("claude")
 
 
 def probleme(moteur: str, fichier: Path) -> str | None:
@@ -699,8 +823,8 @@ def texte_du_pdf(chemin: Path,
     """
     images = images or {}
     try:
-        import fitz  # pymupdf
-        textes = [page.get_text().strip() for page in fitz.open(str(chemin))]
+        import pymupdf  # « import fitz » est deprecie et l'annonce a chaque PDF
+        textes = [page.get_text().strip() for page in pymupdf.open(str(chemin))]
     except ImportError:
         # fitz absent : repli sur pypdf
         from pypdf import PdfReader
@@ -756,16 +880,19 @@ def repondre(moteur: str, modele: str, cle: str | None, systeme: str | None,
     `photo` joint une image, `au_fil(texte_cumule)` suit la reponse en direct.
     `cle_env` n'est utile qu'a "gratuit" : lui seul doit lire plusieurs cles.
     Chaque moteur parle son dialecte ici et seulement ici : le reste du programme
-    ne sait pas a qui il s'adresse.
+    ne sait pas a qui il s'adresse. Chaque appel est signale (cf. suivi).
     """
-    if moteur == "gratuit":
-        return _gratuit(cle_env, systeme, texte, photo, max_jetons, au_fil)
-    if moteur in FOURNISSEURS:
-        _noter_moteur(moteur, modele)
-        return _api_openai(URL_FOURNISSEUR[moteur], modele, cle, systeme, texte,
-                           photo, max_jetons, au_fil)
-    _noter_moteur("claude-cli", modele)
-    return _claude_cli(modele, systeme, texte, photo, au_fil)
+    def appel(flux):
+        if moteur == "gratuit":
+            return _gratuit(cle_env, systeme, texte, photo, max_jetons, flux)
+        if moteur in FOURNISSEURS:
+            _noter_moteur(moteur, modele)
+            return _api_openai(URL_FOURNISSEUR[moteur], modele, cle, systeme, texte,
+                               photo, max_jetons, flux)
+        _noter_moteur("claude-cli", modele)
+        return _claude_cli(modele, systeme, texte, photo, flux)
+    return suivi(moteur, modele, systeme, texte, photo, appel, au_fil,
+                 flux_libre=moteur == "claude-cli")
 
 
 # NIM heberge des centaines de modeles, mais un seul confirme lire les images sur
@@ -1080,6 +1207,8 @@ def _claude_cli(modele: str, systeme: str | None, texte: str, photo: Path | None
     la machine, qui n'ont rien a faire dans la redaction d'un cours.
     Une photo se lit par l'outil Read, pas en base64 ; l'invite systeme reste alors
     celle du CLI, la seule a savoir se servir de ses outils.
+    La consigne systeme part dans un fichier (--system-prompt-file), jamais sur la
+    ligne de commande : cf. trouver_claude.
     """
     exe = trouver_claude()
     if not exe:
@@ -1087,6 +1216,7 @@ def _claude_cli(modele: str, systeme: str | None, texte: str, photo: Path | None
     cmd = [exe, "-p", "--model", modele,
            "--setting-sources", "", "--output-format", "stream-json",
            "--include-partial-messages", "--verbose"]
+    consigne = None
     if photo:
         texte = f"{texte}\n\nLa photo a transcrire : {photo.resolve()}"
         # --tools : seul Read est charge, pas la dizaine d'autres outils du CLI
@@ -1094,29 +1224,44 @@ def _claude_cli(modele: str, systeme: str | None, texte: str, photo: Path | None
         cmd += ["--tools", "Read", "--allowed-tools", "Read",
                 "--add-dir", str(photo.resolve().parent)]
     elif systeme:
-        cmd += ["--system-prompt", systeme]
+        with tempfile.NamedTemporaryFile("w", encoding="utf-8", suffix=".md",
+                                         prefix="incipit-consigne-", delete=False) as f:
+            f.write(systeme)
+        consigne = Path(f.name)
+        cmd += ["--system-prompt-file", str(consigne)]
 
-    p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                         stderr=subprocess.PIPE, text=True, encoding="utf-8",
-                         errors="replace", bufsize=1, creationflags=SANS_FENETRE)
-    p.stdin.write(texte)
-    p.stdin.close()
+    try:
+        p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                             stderr=subprocess.PIPE, text=True, encoding="utf-8",
+                             errors="replace", bufsize=1, creationflags=SANS_FENETRE)
+        p.stdin.write(texte)
+        p.stdin.close()
 
-    morceaux: list[str] = []
-    for ligne in p.stdout:
-        try:
-            evenement = json.loads(ligne)
-        except json.JSONDecodeError:
-            continue                       # le CLI intercale des lignes non-JSON
-        delta = evenement.get("event", {}).get("delta", {})
-        if delta.get("type") == "text_delta" and (bout := delta.get("text")):
-            morceaux.append(bout)
-            if au_fil:
-                au_fil("".join(morceaux))
-    erreur = p.stderr.read()[-300:]
-    if p.wait() != 0:
-        raise RuntimeError(f"le CLI claude a echoue ({erreur.strip() or 'sans message'})")
-    return "".join(morceaux)
+        morceaux: list[str] = []
+        echec = ""
+        for ligne in p.stdout:
+            try:
+                evenement = json.loads(ligne)
+            except json.JSONDecodeError:
+                continue                       # le CLI intercale des lignes non-JSON
+            delta = evenement.get("event", {}).get("delta", {})
+            if delta.get("type") == "text_delta" and (bout := delta.get("text")):
+                morceaux.append(bout)
+                if au_fil:
+                    au_fil("".join(morceaux))
+            # Limite d'usage atteinte, session refusee... : le CLI le dit dans son
+            # evenement final, parfois sans code de sortie d'erreur. Sans ce test,
+            # une photo « transcrite » a vide partait au cache pour de bon.
+            if evenement.get("type") == "result" and evenement.get("is_error"):
+                echec = str(evenement.get("result") or evenement.get("subtype") or "erreur")
+        erreur = p.stderr.read()[-300:]
+        if p.wait() != 0 or echec:
+            raise RuntimeError("le CLI claude a echoue ("
+                               + (echec[:300] or erreur.strip() or "sans message") + ")")
+        return _non_vide("".join(morceaux), f"claude {modele}")
+    finally:
+        if consigne:
+            consigne.unlink(missing_ok=True)
 
 
 # ------------------------------------------------------------- transcriptions
@@ -1129,8 +1274,9 @@ def empreinte(photo: Path, modele: str) -> str:
 
 
 def transcripteur_retenu(cle_env: Path | None) -> str:
-    """Le moteur de lecture des photos choisi dans l'interface, sinon "auto"."""
-    garde = cle_api(cle_env, CLE_TRANSCRIPTEUR) if cle_env and cle_env.is_file() else None
+    """Le moteur de lecture des photos choisi dans l'interface, sinon "auto".
+    Lu comme tout reglage : l'environnement d'abord, meme sans fichier de cles."""
+    garde = cle_api(cle_env, CLE_TRANSCRIPTEUR)
     return garde if garde in TRANSCRIPTEURS else "auto"
 
 
@@ -1152,7 +1298,9 @@ def _lire_photo(moteur, modele, cle, photo: Path, cle_env, choix: str) -> str:
         return repondre(moteur, modele, cle, None, CONSIGNE_PHOTO, cle_env=cle_env,
                         photo=photo, max_jetons=MAX_JETONS_PHOTO)
     if t.fournisseur == "ocr":
-        return _api_ocr(cle_api(cle_env, FOURNISSEURS["nim"].cle), photo)
+        cle_nim = cle_api(cle_env, FOURNISSEURS["nim"].cle)
+        return suivi("ocr", t.modele, None, CONSIGNE_PHOTO, photo,
+                     lambda _flux: _api_ocr(cle_nim, photo))
     return repondre(t.fournisseur,
                     t.modele or modele_retenu(t.fournisseur, None, cle_env),
                     cle_api(cle_env, FOURNISSEURS[t.fournisseur].cle), None,
@@ -1191,7 +1339,8 @@ def transcrire(moteur: str, modele: str | None, cle: str | None, photos: list[Pa
             texte = garde.read_text(encoding="utf-8")
             dire(f"{photo.name} : deja transcrite ({len(texte.split())} mots)")
         else:
-            texte = _lire_photo(moteur, modele, cle, photo, cle_env, choix)
+            with etape(f"Photo {i}/{len(photos)} · {photo.name}"):
+                texte = _lire_photo(moteur, modele, cle, photo, cle_env, choix)
             garde.write_text(texte, encoding="utf-8")
             dire(f"{photo.name} : {len(texte.split())} mots")
         resultats.append((photo.name, texte))
@@ -1245,6 +1394,8 @@ def consigne_systeme(langue: str = "fr", sujet: bool = False,
         raise SystemExit(f"Methode introuvable : {SKILL}")
     corps = re.sub(r"^---\n.*?\n---\n", "", SKILL.read_text(encoding="utf-8"),
                    count=1, flags=re.S)
+    # la fourchette par section suit la longueur choisie (cf. LONGUEURS)
+    corps = corps.replace("200 à 400 mots", f"{FOURCHETTE} mots")
     if section:
         corps = sans_titres(corps, HORS_SECTION)
 
@@ -1592,8 +1743,9 @@ def plan_du_cours(moteur, modele, cle, cle_env, base: str, numerote: bool = Fals
         "texte.",
     ])
     try:
-        brut = repondre(moteur, modele, cle, consigne, base, cle_env=cle_env,
-                        max_jetons=MAX_JETONS_PLAN)
+        with etape("Plan du cours"):
+            brut = repondre(moteur, modele, cle, consigne, base, cle_env=cle_env,
+                            max_jetons=MAX_JETONS_PLAN)
     except (RuntimeError, urllib.error.URLError) as e:
         dire(f"plan indisponible ({e})")
         return [], [], {}
@@ -1654,9 +1806,10 @@ def _demander_section(moteur, modele, cle, cle_env, systeme, base: str,
          "quand tu les emploies :" + SAUT + "  " + ", ".join(termes)) if termes else
         "Aucun vocabulaire impose : les termes que tu introduis sont a toi.",
     ])
-    return nettoyer(repondre(moteur, modele, cle, systeme, demande,
-                             cle_env=cle_env, max_jetons=plafond_jetons(mots_cible),
-                             au_fil=au_fil))
+    with etape(f"Section « {titre} »"):
+        return nettoyer(repondre(moteur, modele, cle, systeme, demande,
+                                 cle_env=cle_env, max_jetons=plafond_jetons(mots_cible),
+                                 au_fil=au_fil))
 
 
 def plafond_jetons(mots_cible: int) -> int:
@@ -1691,9 +1844,10 @@ def _sections_de_fin(moteur, modele, cle, cle_env, systeme, corps: str,
          "page) :\n  "
          + ", ".join(termes)) if termes else "",
     ])
-    return nettoyer(repondre(moteur, modele, cle, systeme, demande_fin,
-                             cle_env=cle_env, max_jetons=MAX_JETONS_FIN,
-                             au_fil=au_fil))
+    with etape("Vocabulaire, récap et auto-test"):
+        return nettoyer(repondre(moteur, modele, cle, systeme, demande_fin,
+                                 cle_env=cle_env, max_jetons=MAX_JETONS_FIN,
+                                 au_fil=au_fil))
 
 
 def ecrire_en_parallele(taches: list, ecrire, annoncer) -> list[str]:
@@ -1752,8 +1906,9 @@ def rediger_par_paquets(moteur, modele, cle, cle_env, systeme, base: str,
     if not plan:
         # sans plan, pas de sections : mieux vaut un cours en un appel qu'aucun cours
         dire("retour a la redaction en un seul appel")
-        return nettoyer(repondre(moteur, modele, cle, systeme, base, cle_env=cle_env,
-                                 max_jetons=MAX_JETONS_COURS))
+        with etape("Cours en un seul appel"):
+            return nettoyer(repondre(moteur, modele, cle, systeme, base, cle_env=cle_env,
+                                     max_jetons=MAX_JETONS_COURS))
     taches = taches_du_plan(plan)
     mots_par_section = max(150, (MOTS_CIBLE_TOTAL - MOTS_CIBLE_FIN) // len(taches))
     dire(f"{len(plan)} parties, {len(taches)} sections, "
@@ -1844,6 +1999,76 @@ def destination_retenue(defaut: Path, fichier: Path) -> Path:
     return defaut
 
 
+Sources = namedtuple("Sources", "base fichiers photos pdfs autres")
+
+
+def lire_sources(sources: Path, sortie: Path, matiere: str, type_: str, titre: str,
+                 liens: list[str], cle_env: Path, moteur: str, modele: str | None,
+                 cle: str | None, langue: str = "fr", vide_permis: bool = False) -> Sources:
+    """Tout ce qui a ete depose, lu et mis bout a bout : la demande (`base`) que
+    le modele recoit, et de quoi compter les sources pour l'en-tete.
+
+    Les photos deja transcrites sortent du cache : relire les sources pour
+    reecrire une seule section ne coute rien de plus que la section.
+    `vide_permis` : pas d'erreur sans source (la reecriture s'appuie alors sur le
+    cours deja ecrit).
+    """
+    # sources peut ne pas exister (dossier jamais cree, efface entre-temps) :
+    # sans ce garde, iterdir() leve un FileNotFoundError brut avant le message
+    # clair prevu deux lignes plus bas.
+    fichiers = [f for f in sorted(sources.iterdir()) if f.is_file()] \
+        if sources.is_dir() else []
+    photos = [f for f in fichiers if f.suffix.lower() in EXT_IMG]
+    pdfs = [f for f in fichiers if f.suffix.lower() == ".pdf"]
+    autres = [f for f in fichiers if f not in photos and f not in pdfs]
+    if not fichiers and not vide_permis:
+        raise SystemExit(f"Aucune source dans {sources}")
+    dire(f"{len(photos)} photo(s), {len(pdfs)} PDF, {len(autres)} autre(s) fichier(s)", 5)
+
+    # Les liens colles dans l'interface arrivent en .url : c'est la page qu'on
+    # lit, pas les deux lignes du raccourci.
+    pages = []
+    for f in [f for f in autres if f.suffix.lower() == ".url"]:
+        autres.remove(f)
+        adresse, texte = texte_du_lien(f)
+        dire(f"{adresse} : {len(texte.split())} mots"
+             + (" (page tronquee : trop longue)" if "[... page tronquee" in texte else ""))
+        pages.append((adresse, texte))
+
+    textes_autres = []
+    for f in autres:
+        if not texte_probable(f):
+            dire(f"{f.name} : fichier binaire non pris en charge, ignore")
+            continue
+        # tronque sans le dire, l'etudiant croyait le fichier lu en entier (#5)
+        if f.stat().st_size > MAX_OCTETS_FICHIER:
+            dire(f"{f.name} : tronque a {MAX_OCTETS_FICHIER // 1000} Ko, la suite "
+                 "n'est pas lue (decoupe-le en plusieurs fichiers)")
+        textes_autres.append((f.name, texte_du_fichier(f)))
+
+    transcriptions = transcrire(moteur, modele, cle, photos,
+                                sources.parent / ".transcriptions", cle_env)
+
+    dire("Lecture des PDF", PHOTO_FIN)
+    # les images des diapos vont la ou l'interface met deja les photos
+    dossier_img = sortie.parent / "_img" / slug(titre) / "diapos"
+    racine = racine_vault(sortie.parent) or sortie.parent
+    textes_pdf = []
+    for pdf in pdfs:
+        try:
+            images = images_du_pdf(pdf, dossier_img, racine)
+        except Exception as e:            # une diapo non rendue ne doit pas tout arreter
+            dire(f"{pdf.name} : pages non rendues ({type(e).__name__})")
+            images = {}
+        texte = texte_du_pdf(pdf, images)
+        dire(f"{pdf.name} : {len(texte.split())} mots, {len(images)} page(s) en image")
+        textes_pdf.append((pdf.name, texte))
+
+    base = demande(matiere, type_, titre, transcriptions, textes_pdf, liens, textes_autres,
+                   langue, pages)
+    return Sources(base, fichiers, photos, pdfs, textes_autres)
+
+
 def fabriquer(sources: Path, sortie: Path, matiere: str, type_: str, titre: str,
               liens: list[str], cle_env: Path, moteur: str,
               modele: str | None = None, langue: str = "fr",
@@ -1854,56 +2079,12 @@ def fabriquer(sources: Path, sortie: Path, matiere: str, type_: str, titre: str,
         raise SystemExit(souci)
     cle = cle_du_moteur(moteur, cle_env)
     modele = modele_retenu(moteur, modele, cle_env)
-
-    # sources peut ne pas exister (dossier jamais cree, efface entre-temps) :
-    # sans ce garde, iterdir() leve un FileNotFoundError brut avant le message
-    # clair prevu deux lignes plus bas.
-    fichiers = [f for f in sorted(sources.iterdir()) if f.is_file()] \
-        if sources.is_dir() else []
-    photos = [f for f in fichiers if f.suffix.lower() in EXT_IMG]
-    pdfs = [f for f in fichiers if f.suffix.lower() == ".pdf"]
-    autres = [f for f in fichiers if f not in photos and f not in pdfs]
-    if not fichiers:
-        raise SystemExit(f"Aucune source dans {sources}")
     dire(f"{MOTEURS[moteur].libelle}" + (f"  [{modele}]" if modele else ""))
-    dire(f"{len(photos)} photo(s), {len(pdfs)} PDF, {len(autres)} autre(s) fichier(s)", 5)
+    lu = lire_sources(sources, sortie, matiere, type_, titre, liens, cle_env, moteur,
+                      modele, cle, langue)
 
-    # Les liens colles dans l'interface arrivent en .url : c'est la page qu'on
-    # lit, pas les deux lignes du raccourci.
-    pages = []
-    for f in [f for f in autres if f.suffix.lower() == ".url"]:
-        autres.remove(f)
-        adresse, texte = texte_du_lien(f)
-        dire(f"{adresse} : {len(texte.split())} mots")
-        pages.append((adresse, texte))
-
-    textes_autres = []
-    for f in autres:
-        if not texte_probable(f):
-            dire(f"{f.name} : fichier binaire non pris en charge, ignore")
-            continue
-        textes_autres.append((f.name, texte_du_fichier(f)))
-
-    transcriptions = transcrire(moteur, modele, cle, photos,
-                                sources.parent / ".transcriptions", cle_env)
-
-    dire("Lecture des PDF", PHOTO_FIN)
-    # les images des diapos vont la ou l'interface met deja les photos
-    dossier_img = sortie.parent / "_img" / slug(titre) / "diapos"
-    base = racine_vault(sortie.parent) or sortie.parent
-    textes_pdf = []
-    for pdf in pdfs:
-        try:
-            images = images_du_pdf(pdf, dossier_img, base)
-        except Exception as e:            # une diapo non rendue ne doit pas tout arreter
-            dire(f"{pdf.name} : pages non rendues ({type(e).__name__})")
-            images = {}
-        texte = texte_du_pdf(pdf, images)
-        dire(f"{pdf.name} : {len(texte.split())} mots, {len(images)} page(s) en image")
-        textes_pdf.append((pdf.name, texte))
-
-    etape = "Reecriture du sujet" if sujet else "Redaction du cours"
-    dire(etape, REDACTION_DEBUT)
+    quoi = "Reecriture du sujet" if sujet else "Redaction du cours"
+    dire(quoi, REDACTION_DEBUT)
     dernier = 0.0
 
     def avancer(cumul: str) -> None:
@@ -1914,11 +2095,10 @@ def fabriquer(sources: Path, sortie: Path, matiere: str, type_: str, titre: str,
         dernier = time.time()
         mots = len(cumul.split())
         part = min(1.0, mots / MOTS_ATTENDUS)
-        dire(f"{etape}  ({mots} mots)",
+        dire(f"{quoi}  ({mots} mots)",
              REDACTION_DEBUT + round((REDACTION_FIN - REDACTION_DEBUT) * part))
 
-    base = demande(matiere, type_, titre, transcriptions, textes_pdf, liens, textes_autres,
-                   langue, pages)
+    base = lu.base
     if sujet:
         # Le cours deja redige donne ses mots et ses notations a l'explication.
         # ponytail: un seul appel meme en gratuit (pas de redaction par paquets) --
@@ -1928,9 +2108,10 @@ def fabriquer(sources: Path, sortie: Path, matiere: str, type_: str, titre: str,
             base += ("\n\n===== COURS DEJA REDIGE SUR CE CHAPITRE (pour expliquer "
                      "avec ses mots, pas a recopier) =====\n"
                      + sortie.read_text(encoding="utf-8"))
-        md = nettoyer(repondre(
-            moteur, modele, cle, consigne_systeme(langue, sujet=True), base,
-            cle_env=cle_env, max_jetons=MAX_JETONS_COURS, au_fil=avancer))
+        with etape("Réécriture du sujet"):
+            md = nettoyer(repondre(
+                moteur, modele, cle, consigne_systeme(langue, sujet=True), base,
+                cle_env=cle_env, max_jetons=MAX_JETONS_COURS, au_fil=avancer))
         sortie = chemin_sujet(sortie)
     elif moteur in PAR_PAQUETS:
         # un seul appel fait rationner le modele gratuit : ~325 mots par partie
@@ -1938,20 +2119,159 @@ def fabriquer(sources: Path, sortie: Path, matiere: str, type_: str, titre: str,
         md = rediger_par_paquets(
             moteur, modele, cle, cle_env, consigne_systeme(langue), base,
             matiere, type_, titre,
-            [f.name for f in fichiers], len(pdfs), len(photos), len(textes_autres),
-            consigne_systeme(langue, section=True))
+            [f.name for f in lu.fichiers], len(lu.pdfs), len(lu.photos),
+            len(lu.autres), consigne_systeme(langue, section=True))
     else:
-        md = nettoyer(repondre(
-            moteur, modele, cle, consigne_systeme(langue), base,
-            cle_env=cle_env, max_jetons=MAX_JETONS_COURS, au_fil=avancer))
+        with etape("Rédaction du cours"):
+            md = nettoyer(repondre(
+                moteur, modele, cle, consigne_systeme(langue), base,
+                cle_env=cle_env, max_jetons=MAX_JETONS_COURS, au_fil=avancer))
     if len(md.split()) < 200:
         raise SystemExit(f"Texte trop court, quelque chose a echoue :\n{md[:400]}")
 
     md = tracer_moteur(md, MOTEUR_UTILISE)
     dire(f"redige par : {MOTEUR_UTILISE or 'moteur inconnu'}")
     sortie.parent.mkdir(parents=True, exist_ok=True)
+    garder_version(sortie)
     sortie.write_text(md, encoding="utf-8")
     dire(f"{sortie.name} : {len(md.split())} mots", REDACTION_FIN)
+
+
+# ------------------------------------------------- reecrire une seule section
+# Une section ratee obligeait a regenerer tout le cours (#5) : ici, seule la
+# section visee repart chez le modele, avec ses sources, le plan du cours, sa
+# version actuelle et ce que l'etudiant veut y changer. Le reste du fichier ne
+# bouge pas d'un caractere.
+
+# Les sections de fin se tirent du corps entier : elles ne se reecrivent pas seules
+FIN_DE_COURS = ("vocabulaire à retenir", "récap", "auto-test", "sources")
+DOSSIER_VERSIONS = ".versions"
+VERSIONS_GARDEES = 10
+
+
+def garder_version(cours: Path) -> Path | None:
+    """Range une copie du cours avant de l'ecraser, dans .versions/ a cote (dossier
+    a point : invisible dans Obsidian). Une regeneration decevante ne doit pas
+    faire perdre la version d'avant. Les plus anciennes au-dela de
+    VERSIONS_GARDEES partent."""
+    if not cours.is_file():
+        return None
+    dossier = cours.parent / DOSSIER_VERSIONS
+    dossier.mkdir(exist_ok=True)
+    copie = dossier / f"{cours.stem} {time.strftime('%Y-%m-%d %Hh%M%S')}.md"
+    shutil.copy2(cours, copie)
+    anciennes = sorted(dossier.glob(f"{glob_litteral(cours.stem)} *.md"))
+    for vieille in anciennes[:-VERSIONS_GARDEES]:
+        vieille.unlink(missing_ok=True)
+    return copie
+
+
+def glob_litteral(nom: str) -> str:
+    """Un nom de fichier lu tel quel par glob, crochets et etoiles compris."""
+    return re.sub(r"([\[\]*?])", r"[\1]", nom)
+
+
+def sections_du_cours(md: str) -> list[tuple[int, str, int, int]]:
+    """Les sections `##` et `###` du cours : (niveau, titre, debut, fin) en
+    numeros de ligne, fin exclue -- jusqu'au prochain titre de meme niveau ou
+    plus haut. Un `#` dans un bloc de code n'est pas un titre."""
+    lignes = md.split(SAUT)
+    titres, dans_code = [], False
+    for i, ligne in enumerate(lignes):
+        if ligne.lstrip().startswith("```"):
+            dans_code = not dans_code
+        elif not dans_code and (m := re.match(r"^(#{1,3})\s+(.+?)\s*$", ligne)):
+            titres.append((len(m.group(1)), m.group(2).strip(), i))
+    sections = []
+    for k, (niveau, titre, debut) in enumerate(titres):
+        if niveau == 1:
+            continue
+        fin = next((d for n, _, d in titres[k + 1:] if n <= niveau), len(lignes))
+        sections.append((niveau, titre, debut, fin))
+    return sections
+
+
+def remplacer_section(md: str, cible: str, nouveau: str) -> str:
+    """`md` ou la section titree `cible` est remplacee par `nouveau`, le reste
+    intact. Leve si le titre n'y est pas (ou n'y est plus)."""
+    lignes = md.split(SAUT)
+    for niveau, titre, debut, fin in sections_du_cours(md):
+        if titre.casefold() == cible.strip().casefold():
+            bloc = nouveau.strip(SAUT).split(SAUT)
+            # la section suivante garde sa ligne blanche d'avant
+            return SAUT.join(lignes[:debut] + bloc + ([""] if fin < len(lignes) else [])
+                             + lignes[fin:])
+    raise SystemExit(f"Section introuvable dans le cours : {cible}")
+
+
+def reecrire(sources: Path, sortie: Path, matiere: str, type_: str, titre: str,
+             cible: str, consigne: str, liens: list[str], cle_env: Path, moteur: str,
+             modele: str | None = None, langue: str = "fr") -> None:
+    """Reecrit la seule section `cible` du cours deja ecrit dans `sortie`."""
+    if souci := probleme(moteur, cle_env):
+        raise SystemExit(souci)
+    if not sortie.is_file():
+        raise SystemExit(f"Cours introuvable : {sortie}")
+    md = sortie.read_text(encoding="utf-8")
+    section = next(((n, t, d, f) for n, t, d, f in sections_du_cours(md)
+                    if t.casefold() == cible.strip().casefold()), None)
+    if section is None:
+        raise SystemExit(f"Section introuvable dans le cours : {cible}")
+    niveau, titre_section, debut, fin = section
+    if titre_section.casefold() in FIN_DE_COURS:
+        raise SystemExit("Les sections de fin se tirent de tout le cours : "
+                         "regenere le cours pour les refaire.")
+    cle = cle_du_moteur(moteur, cle_env)
+    modele = modele_retenu(moteur, modele, cle_env)
+    dire(f"{MOTEURS[moteur].libelle}" + (f"  [{modele}]" if modele else ""))
+    lu = lire_sources(sources, sortie, matiere, type_, titre, liens, cle_env, moteur,
+                      modele, cle, langue, vide_permis=True)
+    actuelle = SAUT.join(md.split(SAUT)[debut:fin]).strip()
+    diese = "#" * niveau
+    sous = [t for n, t, d, _ in sections_du_cours(md) if debut < d < fin and n > niveau]
+    plan = [("#" * n) + " " + t for n, t, _, _ in sections_du_cours(md)
+            if t.casefold() not in FIN_DE_COURS]
+    termes = termes_definis(md)
+
+    dire(f"Reecriture de « {titre_section} »", REDACTION_DEBUT)
+    requete = SAUT.join([
+        lu.base if lu.fichiers else "(Les sources ne sont plus disponibles : appuie-toi "
+        "sur le cours deja redige ci-dessous, sans rien inventer.)", "",
+        "===== PLAN DU COURS (ne le recopie pas) =====", *plan, "",
+        RAPPEL_PERSONA, "",
+        "===== LA VERSION ACTUELLE DE CETTE SECTION (a ameliorer, pas a recopier) =====",
+        actuelle, "",
+        "===== TA TACHE =====",
+        "Reecris UNIQUEMENT « " + titre_section + " », et rien d'autre.",
+        "Commence par la ligne `" + diese + " " + titre_section + "`, a l'identique. Pas "
+        "d'en-tete YAML, ni d'autres sections, ni de sections de fin.",
+        ("Garde ses sous-parties, avec les memes titres et dans le meme ordre : "
+         + ", ".join(f"« {s} »" for s in sous) + ".") if sous else "",
+        "Termine par son `> [!tip] À retenir` de deux ou trois lignes. Ce qui vient "
+        "des sources reste hors des `> [!note] Complément`, reserves a ce que tu "
+        "ajoutes.",
+        ("CE QUE L'ETUDIANT DEMANDE POUR CETTE SECTION (prime sur la version "
+         "actuelle) : " + consigne.strip()) if consigne.strip() else
+        "L'etudiant n'a rien precise : rends-la plus claire, plus visuelle et plus "
+        "pas-a-pas, sans la rallonger pour rien.",
+        ("Vocabulaire du cours, deja defini dans la section finale : ne redefinis "
+         "aucun de ces termes, fais-leur un lien [[#Vocabulaire à retenir|terme]] "
+         "quand tu les emploies : " + ", ".join(termes)) if termes else "",
+    ])
+    mots = len(actuelle.split())
+    with etape(f"Réécriture « {titre_section} »"):
+        nouveau = nettoyer(repondre(
+            moteur, modele, cle, consigne_systeme(langue, section=True), requete,
+            cle_env=cle_env,
+            max_jetons=min(MAX_JETONS_COURS, max(1500, mots * JETONS_PAR_MOT * 2))))
+    if not re.match(rf"^{re.escape(diese)}\s+", nouveau.lstrip()):
+        nouveau = f"{diese} {titre_section}" + SAUT * 2 + nouveau
+    if len(nouveau.split()) < 30:
+        raise SystemExit(f"Reponse trop courte, la section n'est pas remplacee :\n{nouveau[:300]}")
+    garder_version(sortie)
+    sortie.write_text(remplacer_section(md, titre_section, nouveau), encoding="utf-8")
+    dire(f"« {titre_section} » reecrite : {mots} -> {len(nouveau.split())} mots",
+         REDACTION_FIN)
 
 
 # --------------------------------------------------------------------- tests
@@ -2367,6 +2687,7 @@ def _self_test() -> None:
         globals()["CONSIGNE_PHOTO"] = CONSIGNE_PHOTO + " (v2)"
         assert not (cache / f"{empreinte(faux, modele)}.txt").is_file()
 
+    _self_test_hitodama()
     print("generator : self-test OK")
     print("  methode :", SKILL)
     env = Path(__file__).resolve().parent / "config" / "keys.env"
@@ -2377,6 +2698,133 @@ def _self_test() -> None:
         etat = probleme_fournisseur(nom, env)
         print(f"    {nom:<9} {'pret' if etat is None else 'a configurer'}  -  "
               f"{modele_retenu(nom, None, env)}")
+
+
+def _self_test_hitodama() -> None:
+    """Les correctifs apportes en integrant Incipit a Hitodama."""
+    global TRACE, FOURCHETTE
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp = Path(tmp)
+        # reglages par l'environnement, prefixes : rien en clair sur le disque
+        env = tmp / "keys.env"
+        env.write_text("set NVIDIA_API_KEY=nvapi-fichier\n", encoding="utf-8")
+        vrai = dict(os.environ)
+        try:
+            os.environ["INCIPIT_NVIDIA_API_KEY"] = "nvapi-env"
+            os.environ["INCIPIT_TRANSCRIPTEUR"] = "ocr"
+            os.environ["NIM_MODELE"] = "sans-prefixe-ignore"
+            assert cle_api(env, "NVIDIA_API_KEY") == "nvapi-env", "l'environnement prime"
+            assert cle_api(None, "NVIDIA_API_KEY") == "nvapi-env", "meme sans fichier"
+            assert probleme("gratuit", tmp / "absent.env") is None
+            assert transcripteur_retenu(tmp / "absent.env") == "ocr", \
+                "le transcripteur se lit sans fichier de cles"
+            assert modele_retenu("nim", None, tmp / "absent.env") == FOURNISSEURS["nim"].modele
+            del os.environ["INCIPIT_NVIDIA_API_KEY"]
+            assert cle_api(env, "NVIDIA_API_KEY") == "nvapi-fichier", "puis le fichier"
+
+            # le vrai executable de claude passe avant le claude.cmd du PATH
+            faux_exe = tmp / ("claude.exe" if sys.platform == "win32" else "claude")
+            faux_exe.write_text("", encoding="utf-8")
+            os.environ["INCIPIT_CLAUDE"] = str(faux_exe)
+            assert trouver_claude() == str(faux_exe)
+
+            # La consigne passe par un fichier : un .cmd (cmd.exe) coupait l'argument
+            # au premier saut de ligne et refusait plus de 8191 caracteres. Le faux
+            # CLI ci-dessous est justement un .cmd : il rend ce qu'il a recu.
+            if sys.platform == "win32":
+                faux_cli = tmp / "faux_claude.py"
+                faux_cli.write_text(
+                    "import json, sys\n"
+                    "a = sys.argv[1:]\n"
+                    "chemin = a[a.index('--system-prompt-file') + 1]\n"
+                    "consigne = open(chemin, encoding='utf-8').read()\n"
+                    "demande = sys.stdin.read()\n"
+                    "texte = f'{len(consigne)}|{consigne.count(chr(10))}|{demande}|{chemin}'\n"
+                    "print(json.dumps({'event': {'delta': {'type': 'text_delta', 'text': texte}}}))\n"
+                    "print(json.dumps({'type': 'result', 'is_error': False}))\n",
+                    encoding="utf-8")
+                cmd = tmp / "claude.cmd"
+                cmd.write_text(f'@"{sys.executable}" "{faux_cli}" %*\r\n', encoding="utf-8")
+                os.environ["INCIPIT_CLAUDE"] = str(cmd)
+                longue = ("ligne de consigne\n" * 2000).strip()      # ~36 000 caracteres
+                rendu = _claude_cli("opus", longue, "la demande", None, None)
+                taille, sauts, recu, chemin = rendu.split("|")
+                assert (int(taille), int(sauts), recu) == (len(longue), longue.count(SAUT),
+                                                           "la demande"), rendu[:200]
+                assert not Path(chemin).exists(), "le fichier de consigne doit partir"
+                # limite d'usage : le CLI le dit dans son resultat, ce n'est pas une reponse
+                faux_cli.write_text(
+                    "import json, sys\nsys.stdin.read()\n"
+                    "print(json.dumps({'type': 'result', 'is_error': True, "
+                    "'result': 'Claude AI usage limit reached'}))\n", encoding="utf-8")
+                try:
+                    _claude_cli("sonnet", None, "photo", None, None)
+                except RuntimeError as e:
+                    assert "usage limit" in str(e), e
+                else:
+                    raise AssertionError("une limite d'usage passait pour une reponse vide")
+        finally:
+            os.environ.clear()
+            os.environ.update(vrai)
+
+        # la longueur choisie remplace la fourchette par section de la methode
+        FOURCHETTE = LONGUEURS["court"][2]
+        assert f"{LONGUEURS['court'][2]} mots" in consigne_systeme("fr")
+        assert "200 à 400 mots" not in consigne_systeme("fr")
+        FOURCHETTE = LONGUEURS["normal"][2]
+        assert "200 à 400 mots" in consigne_systeme("fr")
+        assert set(LONGUEURS) == {"court", "normal", "detaille"}
+
+        # sections : ## et ###, jusqu'au prochain titre de meme niveau ; un # dans
+        # un bloc de code n'est pas un titre
+        md = SAUT.join(["---", "titre: T", "---", "", "# T", "", "## 1. Piles", "", "intro",
+                        "", "### 1.1 LIFO", "", "texte", "```py", "# pas un titre", "```",
+                        "", "### 1.2 Usage", "", "u", "", "## 2. Files", "", "f", "",
+                        "## Vocabulaire à retenir", "", "| a | b |"])
+        secs = [(n, t) for n, t, _, _ in sections_du_cours(md)]
+        assert secs == [(2, "1. Piles"), (3, "1.1 LIFO"), (3, "1.2 Usage"), (2, "2. Files"),
+                        (2, "Vocabulaire à retenir")], secs
+        neuf = remplacer_section(md, "1.1 lifo", "### 1.1 LIFO\n\nnouveau texte")
+        assert "nouveau texte" in neuf and "# pas un titre" not in neuf, neuf
+        assert neuf.count("### 1.2 Usage") == 1 and "## 2. Files" in neuf
+        assert neuf.split("### 1.1 LIFO")[0] == md.split("### 1.1 LIFO")[0], "l'avant intact"
+        assert neuf.split("### 1.2 Usage")[1] == md.split("### 1.2 Usage")[1], "l'apres intact"
+        partie = remplacer_section(md, "1. Piles", "## 1. Piles\n\ntout neuf")
+        assert "1.1 LIFO" not in partie and "## 2. Files" in partie, partie
+        try:
+            remplacer_section(md, "inexistante", "x")
+        except SystemExit:
+            pass
+        else:
+            raise AssertionError("une section absente doit lever")
+
+        # une version gardee avant chaque ecrasement, les plus vieilles elaguees
+        cours = tmp / "CM - T [1].md"
+        cours.write_text("v0", encoding="utf-8")
+        for i in range(VERSIONS_GARDEES + 2):
+            assert garder_version(cours).read_text(encoding="utf-8") == "v0"
+            time.sleep(0.01)
+        assert len(list((tmp / DOSSIER_VERSIONS).iterdir())) <= VERSIONS_GARDEES + 1
+        assert garder_version(tmp / "absent.md") is None
+
+        # l'activite : chaque appel signale, et trace avec --trace
+        TRACE = tmp / "trace"
+        with etape("Plan du cours"):
+            assert suivi("nim", "m", "sys", "demande", None, lambda flux: "reponse") == "reponse"
+        try:
+            with etape("Section « 2 »"):
+                suivi("nim", "m", None, "demande", None,
+                      lambda flux: (_ for _ in ()).throw(RuntimeError("panne")))
+        except RuntimeError:
+            pass
+        else:
+            raise AssertionError("l'echec doit remonter")
+        traces = sorted(TRACE.iterdir())
+        assert len(traces) == 2, traces
+        assert "## Reponse" in traces[0].read_text(encoding="utf-8")
+        assert "panne" in traces[1].read_text(encoding="utf-8")
+        TRACE = None
+        assert getattr(_ICI, "etape", None) is None, "l'etape se referme"
 
 
 def main() -> None:
@@ -2399,6 +2847,15 @@ def main() -> None:
     p.add_argument("--sujet", action="store_true",
                    help="reecrit le sujet d'exercice depose (a cote de --sortie) "
                         "au lieu de rediger le cours")
+    p.add_argument("--longueur", default="normal", choices=list(LONGUEURS),
+                   help="longueur du cours : court, normal ou detaille")
+    p.add_argument("--reecrire", metavar="TITRE",
+                   help="reecrit seulement cette section (titre ## ou ### du cours "
+                        "deja ecrit dans --sortie), le reste ne bouge pas")
+    p.add_argument("--consigne", default="",
+                   help="avec --reecrire : ce qu'il faut changer dans la section")
+    p.add_argument("--trace", type=Path,
+                   help="dossier ou ecrire la demande et la reponse de chaque appel")
     p.add_argument("--self-test", action="store_true")
     a = p.parse_args()
 
@@ -2407,10 +2864,18 @@ def main() -> None:
         return
     if not a.sources or not a.sortie:
         p.error("--sources et --sortie sont obligatoires")
+    global MOTS_CIBLE_TOTAL, MOTS_CIBLE_FIN, FOURCHETTE, TRACE
+    MOTS_CIBLE_TOTAL, MOTS_CIBLE_FIN, FOURCHETTE = LONGUEURS[a.longueur]
+    TRACE = a.trace
+    if a.reecrire:
+        reecrire(a.sources, a.sortie, a.matiere, a.type_, a.titre, a.reecrire,
+                 a.consigne, a.liens, a.cle_env, a.moteur, a.modele, a.langue)
+        return
     fabriquer(a.sources, a.sortie, a.matiere, a.type_, a.titre, a.liens, a.cle_env,
               a.moteur, a.modele, a.langue, a.sujet)
 
 
 if __name__ == "__main__":
-    sys.stdout.reconfigure(encoding="utf-8", errors="replace")   # cp1252 mange les accents
+    # cp1252 mange les accents ; ligne par ligne, l'appli qui lit suit en direct
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace", line_buffering=True)
     main()
