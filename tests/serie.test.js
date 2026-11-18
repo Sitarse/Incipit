@@ -1,0 +1,45 @@
+// La série du module Cours (modules/cours/serie.js) : quand un jour compte, la série d'affilée, celle en jeu, celle perdue
+// hier, le record, la semaine, le temps avant minuit ; puis l'enregistrement dans un dossier temporaire.
+const assert = require('node:assert/strict')
+const fs = require('node:fs'), os = require('node:os'), path = require('node:path')
+const Serie = require('../src/modules/cours/serie')
+const { doneDay, compute, dayKey } = Serie
+
+// 1. Un jour compte : 1 chapitre, 1 quiz, 10 cartes ou 15 min de lecture
+assert.equal(doneDay({ chap: 1 }), true); assert.equal(doneDay({ quiz: 1 }), true)
+assert.equal(doneDay({ cards: 9 }), false); assert.equal(doneDay({ cards: 10 }), true)
+assert.equal(doneDay({ sec: 899 }), false); assert.equal(doneDay({ sec: 900 }), true)
+assert.equal(doneDay({}), false); assert.equal(doneDay(undefined), false)
+
+// 2. La série : le 18 novembre 2026 à 22 h 30 (un mercredi)
+const now = new Date(2026, 10, 18, 22, 30, 0).getTime()
+const k = d => dayKey(new Date(2026, 10, d, 12).getTime())
+let s = compute({ [k(15)]: { chap: 1 }, [k(16)]: { cards: 12 }, [k(17)]: { sec: 1000 } }, now)
+assert.deepEqual([s.done, s.prev, s.streak, s.lost], [false, 3, 3, 0], 'en jeu : 3 jours jusqu’à hier, pas encore fait aujourd’hui')
+assert.equal(s.left, 90 * 60e3, 'une heure et demie avant minuit')
+s = compute({ [k(15)]: { chap: 1 }, [k(16)]: { cards: 12 }, [k(17)]: { sec: 1000 }, [k(18)]: { quiz: 1 } }, now)
+assert.deepEqual([s.done, s.streak], [true, 4], 'fait aujourd’hui : la série passe à 4')
+s = compute({ [k(14)]: { chap: 1 }, [k(15)]: { chap: 1 }, [k(16)]: { chap: 1 } }, now)
+assert.deepEqual([s.streak, s.lost, s.best], [0, 3, 3], 'hier manqué : la série de 3 est perdue, le record reste')
+s = compute({ [k(10)]: { chap: 1 }, [k(11)]: { chap: 1 }, [k(12)]: { chap: 1 }, [k(13)]: { chap: 1 }, [k(17)]: { chap: 1 } }, now)
+assert.deepEqual([s.streak, s.best, s.lost, s.total], [1, 4, 0, 5])
+s = compute({ [k(18)]: { cards: 3, sec: 360 } }, now)
+assert.deepEqual(s.progress, { chap: 0, quiz: 0, cards: 3, min: 6 })
+assert.deepEqual(s.week.map(d => d.label).join(''), 'LMMJVSD')
+assert.equal(s.week.findIndex(d => d.today), 2, 'le mercredi'); assert.equal(s.week[3].future, true); assert.equal(s.week[1].future, false)
+
+// 3. L'enregistrement : un dossier temporaire ; le temps de lecture vient de lecteur-activite.json
+const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hito-serie-'))
+const serie = Serie(dir)
+assert.equal(serie.state().done, false)
+assert.equal(serie.record('nimporte'), false, 'un genre inconnu est refusé')
+for (let i = 0; i < 9; i++) serie.record('cards')
+assert.equal(serie.state().done, false)
+serie.record('cards')
+assert.deepEqual([serie.state().done, serie.state().streak, serie.state().progress.cards], [true, 1, 10])
+fs.writeFileSync(path.join(dir, 'lecteur-activite.json'), JSON.stringify({ [dayKey(Date.now())]: 420 }))
+assert.equal(serie.state().progress.min, 7)
+fs.writeFileSync(path.join(dir, 'serie.json'), '{ cassé')
+assert.equal(serie.state().streak, 0, 'un fichier abîmé ne fait pas planter')
+fs.rmSync(dir, { recursive: true, force: true })
+console.log('serie : ok')

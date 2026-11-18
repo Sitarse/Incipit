@@ -1,75 +1,88 @@
-<div align="center">
-  <img src="frontend/logo.png" width="96" alt="Incipit">
-  <h1>Incipit</h1>
-  <p><em>Your lecture photos and PDF slides → a written course, in Markdown and PDF.</em></p>
-</div>
+# Incipit
 
----
+Tes photos de cours, PDF de diapos et notes deviennent un cours rédigé (Markdown pour Obsidian, et PDF), avec fiche de
+révision, TP noté, flash cards à réviser, série du jour et un lecteur de cours (quiz, IDE, tuteur, sources).
 
-## What it does
+C'est le module Cours de Hitodama, sorti en appli à part : mêmes fonctions, même moteur, aucune dépendance à Hitodama.
+Windows, macOS et Linux.
 
-Drop your whiteboard photos, slide PDFs, notes. Incipit transcribes, structures, writes, then lays out.
+## Installer
 
-```
-   photos            ┌──────────────┐        Course.md   (Obsidian)
-   PDF slides  ──▶   │  Incipit  │ ──▶
-   notes             └──────────────┘        Course.pdf  (typeset)
-```
+Les installateurs se construisent sur GitHub à chaque envoi (onglet Actions) et se publient avec un tag `v…` (onglet
+Releases) ; chacun embarque uv : il n'y a rien d'autre à installer.
 
-| | |
-|---|---|
-| 🖼️ **Reads your photos** | image-by-image transcription, cached — nothing re-read twice |
-| ✍️ **Writes properly** | outline then section-by-section drafting, not a summary |
-| 🎨 **Typesets** | math (KaTeX), diagrams (Mermaid), colored callouts, highlighting |
-| 🔗 **Speaks Obsidian** | vault provisioned automatically, internal links clickable — optionally use [Obsidian](https://obsidian.md/download) to group all courses in one vault |
-| 💸 **Free tier possible** | NVIDIA NIM covers the whole pipeline |
-
----
-
-## Installation
-
-### Executable (recommended, zero prerequisites)
-
-Download your platform's executable (see **Distribution** below) and double-click. Nothing to install: Python, `uv`, and dependencies are bundled. No terminal window opens.
-
-> **Windows**: First run may show "Windows protected your PC" / "Unknown publisher". Click **More info → Run anyway**. This is normal for unsigned open-source apps.
-
-Then paste your key in the app's **Settings** tab. It is stored *outside* the application folder, so updating the app never wipes it:
-
-| OS | Settings file |
-|---|---|
-| Windows | `%APPDATA%\Incipit\keys.env` |
-| macOS | `~/Library/Application Support/Incipit/keys.env` |
-| Linux | `~/.local/share/Incipit/keys.env` |
-
-For PDF: Chrome or Edge — already on almost every machine.
-
----
-
-## Requirements
-
-| Mode | Prerequisites |
-|---|---|
-| **Executable** (downloaded from Releases) | **None** — Python, `uv`, Flask, pywebview, generator, md2pdf, exercices all bundled. Chrome/Edge for PDF (pre-installed on Windows/macOS, `google-chrome` or `chromium` on Linux). |
-| **From source** | [`uv`](https://docs.astral.sh/uv/) only — installs all Python deps on first run via PEP 723 headers. Chrome/Edge for PDF. |
-| **PDF generation** (both modes) | Chrome / Edge / Chromium must be in `PATH`. Windows/macOS: automatic. Linux: `sudo apt install chromium` or `google-chrome-stable`. |
-
----
-
-## Distribution
-
-Three standalone executables (Windows, Linux, macOS) — app icon, no visible terminal, nothing to install alongside. `uv` and dependencies are embedded.
-
-**Download**: see [GitHub Releases](https://github.com/Sitarse/Incipit/releases)
-(published automatically on every `v*` tag via GitHub Actions).
-
----
-
-## Engines
-
-| Engine | Cost | Requirements |
+| Système | Fichier | Premier lancement |
 |---|---|---|
-| **free** (NVIDIA NIM) | free | an `nvapi-…` key |
-| **claude-cli** | Claude Code subscription | `claude` CLI installed |
+| Windows | `Incipit Setup.exe` | Windows peut dire « éditeur inconnu » : Informations complémentaires → Exécuter quand même |
+| macOS | `.dmg` (Intel et Apple Silicon) | appli non signée : clic droit → Ouvrir. Si macOS la dit « endommagée » : `xattr -cr /Applications/Incipit.app` |
+| Linux | `.AppImage` ou `.deb` | `chmod +x Incipit*.AppImage` puis double-clic ; ou `sudo apt install ./incipit*.deb` |
 
-Selected in the UI, stored in the settings file listed under **Installation** above.
+Pour le PDF, il faut Chrome, Chromium ou Edge (déjà là sur presque tous les PC). Pour écrire : Claude Code connecté sur ce
+PC, ou une clé d'un des fournisseurs ci-dessous, à coller dans les réglages (Avancé).
+
+## Depuis les sources
+
+```
+npm install
+node node_modules/electron/install.js   # si npm n'a pas téléchargé le binaire d'Electron
+npm start
+npm run launcher                        # Windows : refait Incipit.exe (logo compris) ; un double-clic ouvre l'appli
+npm run dist                            # l'installateur de ce système (dist/), avec uv dedans
+```
+
+Sans l'installateur il faut [uv](https://docs.astral.sh/uv/) (Windows : `winget install astral-sh.uv` ; macOS :
+`brew install uv` ; Linux : `curl -LsSf https://astral.sh/uv/install.sh | sh`) : le moteur Python
+(`src/modules/cours/engine`) s'y lance, ses dépendances s'installent toutes seules.
+
+## Qui écrit les cours
+
+Réglages des cours → « Qui écrit » ; chaque moteur a son modèle, choisi juste dessous. Les clés se collent dans « Avancé »
+(chiffrées avec le système).
+
+| Moteur | Prix | Il faut |
+|---|---|---|
+| Claude (Opus, Sonnet ou Haiku) | abonnement | Claude Code connecté sur ce PC |
+| Claude (API) | payant à l'usage | une clé Anthropic (`sk-ant-…`), sans abonnement |
+| OpenAI | payant à l'usage | une clé OpenAI |
+| Gemini | gratuit (quota Google) | une clé AI Studio, une ou plusieurs ; Gemini 4 Hydrogen, 3.8 Flash… |
+| Gemini (payant) | payant à l'usage | une clé Google avec facturation : Gemini 4 Carbon, 4 Argon, 3.1 Pro… |
+| OpenRouter | gratuit ou payant selon le modèle (`…:free`) | une clé OpenRouter (`sk-or-…`) |
+| NVIDIA NIM | gratuit | une clé NVIDIA (`nvapi-…`) |
+
+## Où sont les choses
+
+| | Windows | macOS | Linux |
+|---|---|---|---|
+| Réglages et clés | `%APPDATA%\Incipit\config.json` | `~/Library/Application Support/Incipit/config.json` | `~/.config/Incipit/config.json` |
+| Brouillons, journal, révisions | `…\Incipit\cours\` | `…/Incipit/cours/` | `…/Incipit/cours/` |
+| Tes cours | `Documents\Cours` | `Documents/Cours` | `Documents/Cours` |
+
+Les cours vont dans `Documents/Cours`, ou le dossier choisi dans les réglages. Les clés sont chiffrées avec le système
+(Windows : DPAPI, macOS : trousseau, Linux : gnome-keyring ou KWallet ; sans trousseau, Electron les garde lisibles dans
+`config.json`). `INCIPIT_DATA=<dossier>` change le dossier de données (pour essayer sans toucher aux tiennes).
+
+## Ce qui diffère selon le système
+
+- **IDE des cours** (le lecteur) : les compilateurs sont cherchés dans le PATH, plus Homebrew, cargo, nvm… Pour installer un
+  langage manquant, l'IDE affiche la commande à taper (Windows : winget, par un bouton). Le pas à pas de C/C++ demande gdb
+  (Linux : `sudo apt install gdb`) ; sous macOS il n'est pas disponible (clang n'a pas gdb), le reste marche.
+- **Obsidian** : ses coffres sont lus dans son dossier de réglages, selon le système.
+- **Code** : tout ce qui change est dans `src/app/platform.js` (testé pour les trois systèmes : `tests/platform.test.js`).
+
+## Le code
+
+- `src/app/platform.js` : ce qui change entre Windows, macOS et Linux (uv, Claude Code, PATH, arrêt des processus).
+- `src/main.js` : la fenêtre, et ce que le module attend de son hôte.
+- `src/modules/cours/` : le module tel qu'il est dans Hitodama (partie Node, panneau, lecteur, moteur Python).
+- `src/renderer/` : la page, et `shim.js`, les petits outils que Hitodama fournissait au module.
+- `src/ai/companion.js` : le tuteur du lecteur (Claude Code, sinon Gemini). `src/ai/ai.js` : Gemini, plusieurs clés.
+- `launcher/` : le lanceur Windows `Incipit.exe` ; le logo est dans `assets/` (celui de l'ancienne appli).
+- `scripts/` : `fetch-uv.js` (uv dans l'installateur), `smoke.js` (essai de démarrage), `adhoc-sign.js` (macOS).
+
+## Tests
+
+`npm test`, et `npm run smoke` : l'appli démarre hors écran, l'onglet Cours se dessine, aucune erreur de console (Linux sans
+écran : `xvfb-run -a npm run smoke`). GitHub Actions fait les deux, plus l'auto-test du moteur Python, sur les trois systèmes.
+À la main : `INCIPIT_SMOKE=<dossier> INCIPIT_DATA=<dossier> electron .` (état et capture dans `<dossier>` ; ajouter
+`INCIPIT_SMOKE_REGLAGES=1`, `INCIPIT_SMOKE_LECTEUR=1`, `INCIPIT_SMOKE_TUTEUR=1` pour les réglages, le lecteur, et une
+question au tuteur).

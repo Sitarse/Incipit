@@ -1,100 +1,10 @@
-﻿# ============================================================================
-#  SECRETS -- rien de ce qui suit ne doit jamais partir sur GitHub.
-#  Le modele sans secret, lui, est versionne : config/keys.env.example
-# ============================================================================
-config/keys.env
-*.env
-!*.env.exemple
-.env
-.env.*
-*.key
-*.pem
-*.p12
-*.pfx
-secrets/
-credentials*.json
-*_secret*
-*_token*
-
-# ============================================================================
-#  Donnees de l'utilisateur -- son travail, pas le code de l'application
-# ============================================================================
-# Sources deposees dans l'interface + cache de transcription des photos
-workspace/
-# Messages "ne plus afficher" coches par l'utilisateur (etat local, pas du code)
-config/messages_masques.json
-# Cours generes, si quelqu'un pointe la destination dans le projet
-*.pdf
-!docs/**/*.pdf
-
-# ============================================================================
-#  Notes privees -- reflexion personnelle, pas de la documentation du projet
-# ============================================================================
-docs/legal-notes.md
-
-# ============================================================================
-#  Sorties d'execution
-# ============================================================================
-logs/
-*.log
-
-# ============================================================================
-#  Python
-# ============================================================================
-__pycache__/
-*.py[cod]
-*$py.class
-.venv/
-venv/
-env/
-.python-version
-*.egg-info/
-build/
+node_modules/
 dist/
-.pytest_cache/
-.ruff_cache/
-.mypy_cache/
-
-# ============================================================================
-#  Empaquetage -- binaires telecharges et fichiers regeneres a chaque build
-#  (cf. packaging/build_*.sh|ps1), rien de tout ca ne se maintient a la main
-# ============================================================================
-packaging/vendor/
-packaging/*.spec
-
-# ============================================================================
-#  Outillage IA / editeurs (local a la machine, pas au projet)
-# ============================================================================
-.claude/
-.claude-flow/
-.cursor/
-.aider*
-.vscode/
-.idea/
-*.code-workspace
-.serena/
-
-# ============================================================================
-#  Systeme
-# ============================================================================
-Thumbs.db
-ehthumbs.db
-Desktop.ini
-$RECYCLE.BIN/
-.DS_Store
-.Spotlight-V100
-.Trashes
-*~
+Incipit.exe
+__pycache__/
+*.pyc
+*.log
 *.tmp
-*.bak
-*.orig
-
-# Build artifacts (macOS app bundle in launchers/)
-launchers/Incipit.app/
-
-# Config IA locale (pas pour le repo)
-AGENTS.md
-CLAUDE.md
-
-# Docs internes
-docs/free-tier-design.md
+.env
+keys.env
+build/

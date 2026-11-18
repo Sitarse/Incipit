@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:">
+  <title>Incipit</title>
+  <link rel="stylesheet" href="app.css">
+  <link rel="stylesheet" href="../modules/cours/cours.css">
+</head>
+<body>
+  <div id="zone" data-state="open">
+    <header class="hdr"><span class="hdr-brand"><img src="../../assets/logo.png" alt=""><b>Incipit</b></span></header>
+    <div class="alert"></div>
+    <main class="pages">
+      <div class="page cours on" data-page="cours">
+        <section class="card cn">
+          <div class="cn-col cn-today"></div>
+          <div class="cn-col cn-right"></div>
+          <div class="cn-ed" hidden></div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <script src="shim.js"></script>
+  <script src="../modules/cours/cours.js"></script>
+  <script src="../modules/cours/revise.js"></script>
+  <script src="../modules/cours/serie-ui.js"></script>
+</body>
+</html>

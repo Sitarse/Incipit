@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; img-src 'self' file: data: https://i.ytimg.com; style-src 'self' file: 'unsafe-inline'; font-src 'self' file: data:; script-src 'self' file: 'unsafe-eval'">
+<title>Cours</title>
+<link rel="stylesheet" href="lecteur.css">
+<link rel="stylesheet" href="lecteur-plus.css">
+</head>
+<body>
+<div class="app" id="app">
+  <!-- À gauche : le parcours du cours (interface mode cours.png) : logo, le cours ouvert, ses parties et chapitres, ton niveau -->
+  <aside class="toc" id="toc">
+    <div class="toc-h">
+      <button class="logo" id="logo" title="Tous tes cours"><svg viewBox="0 0 24 24"><path d="m2 9 10-5 10 5-10 5z"/><path d="M6 11.5V16c0 1.2 2.7 3 6 3s6-1.8 6-3v-4.5"/><path d="M22 9v6"/></svg><b>Cours</b></button>
+      <button class="x" id="tocClose" title="Réduire le parcours" aria-label="Réduire le parcours"><svg viewBox="0 0 24 24"><path d="m15 18-6-6 6-6"/></svg></button>
+    </div>
+    <div class="toc-lab" id="tocLab">Mon parcours</div>
+    <div class="toc-course" id="tocCourse" hidden></div>
+    <nav class="toc-list" id="tocList"></nav>
+    <div class="toc-foot">
+      <div class="level" id="level" hidden></div>
+      <button class="foot-row" id="theme"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg><span>Thème clair ou sombre</span></button>
+      <button class="foot-row" id="pdfBtn" hidden><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg><span>Ouvrir le PDF du cours</span></button>
+    </div>
+  </aside>
+  <button class="toc-open" id="tocOpen" title="Afficher le parcours" aria-label="Afficher le parcours" hidden><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg></button>
+
+  <!-- En haut : où tu es (cours › partie › chapitre), où tu en es, la loupe (un cours, une matière) et tous tes cours -->
+  <header class="top">
+    <nav class="crumbs" id="crumbs"><span id="courseT">Mes cours</span></nav>
+    <span class="prog" id="prog" hidden><span class="prog-bar"><i id="progBar"></i></span><b id="progT"></b></span>
+    <div class="top-r">
+      <button class="icon job" id="job" hidden></button>
+      <button class="serie-chip" id="serieChip" data-state="todo" aria-label="Ta série de jours"></button>
+      <button class="round" id="searchBtn" title="Chercher un cours ou une matière (Ctrl+K)" aria-label="Chercher un cours ou une matière"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></button>
+      <button class="avatar" id="avatarBtn" title="Tous tes cours" aria-label="Tous tes cours"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg></button>
+    </div>
+  </header>
+
+  <main class="main" id="main">
+    <div class="serie-banner" id="serieBanner" hidden></div>
+    <article class="chap" id="chap" hidden></article>
+    <div class="pane" id="pane" hidden></div>
+    <div class="empty" id="empty">Chargement…</div>
+  </main>
+
+  <!-- En bas : chapitre précédent / chapitre suivant (le suivant coche le chapitre) -->
+  <footer class="foot" id="foot" hidden>
+    <button class="btn-o" id="footPrev"><svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg><span></span></button>
+    <button class="btn-p" id="footNext"><span></span><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+  </footer>
+
+  <!-- À droite, flottante : exercice (le quiz), diapos du prof, tuteur -->
+  <div class="rail" id="rail" hidden>
+    <button data-rail="quiz" id="railQuiz"><svg viewBox="0 0 24 24"><path d="m6 4 14 8-14 8z"/></svg><span>Exercice</span></button>
+    <button data-rail="src"><svg viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg><span>Sources</span></button>
+    <button id="railIde" title="L’IDE : écrire, compiler, lancer du code"><svg viewBox="0 0 24 24"><path d="m8 9-4 3 4 3M16 9l4 3-4 3M13.5 6l-3 12"/></svg><span>IDE</span></button>
+    <button data-rail="hito"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11.7 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg><span>Tuteur</span></button>
+  </div>
+  <!-- L'IDE vide, à droite (lecteur-ide.js le remplit : le même que dans les exemples du cours) -->
+  <section class="ide" id="ide" hidden></section>
+  <aside class="side" id="side" hidden>
+    <div class="side-tabs"><button data-side="src" id="sideSrcBtn">Sources</button><button data-side="hito">Tuteur</button><button class="x" id="sideClose" title="Fermer" aria-label="Fermer"><svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="side-src" id="sideSrc"></div>
+    <div class="side-hito" id="sideHito" hidden>
+      <div class="h-acts" id="hActs">
+        <button data-q="Je suis perdu sur ce chapitre : reprends-le depuis le début, simplement, avec une image concrète.">Je suis perdu</button>
+        <button data-q="Explique ce chapitre autrement, avec d'autres mots que le cours.">Explique autrement</button>
+        <button data-q="Donne-moi un autre exemple concret pour ce chapitre.">Un autre exemple</button>
+        <button data-q="Teste-moi sur ce chapitre : pose-moi une seule question, attends ma réponse, puis corrige-moi.">Teste-moi</button>
+      </div>
+      <div class="h-msgs" id="hMsgs"><p class="h-hint">Le tuteur lit le chapitre ouvert. Pose ta question, ou surligne un passage du cours.</p></div>
+      <div class="h-in">
+        <textarea class="h-box" id="hBox" rows="1" placeholder="Pose ta question sur ce chapitre…"></textarea>
+        <div class="h-foot"><span>Entrée pour envoyer</span><span>ou surligne un passage</span></div>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<!-- La loupe : un cours ou une matière -->
+<div class="spot" id="spot" hidden>
+  <div class="spot-box">
+    <div class="spot-in"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="spotIn" placeholder="Chercher un cours ou une matière…" autocomplete="off" spellcheck="false"></div>
+    <div class="spot-list" id="spotList"></div>
+  </div>
+</div>
+<!-- Tous tes cours, sous l'avatar -->
+<div class="menu" id="menu" hidden></div>
+
+<div class="viewer" id="viewer" hidden>
+  <div class="vw-main"><img id="vwImg" alt=""></div>
+  <div class="vw-side">
+    <div class="vw-top"><div class="vw-files" id="vwFiles"></div><button class="icon" id="vwClose" title="Fermer (Échap)">✕</button></div>
+    <div class="pg"><button id="vwPrev" aria-label="Page précédente">‹</button><button id="vwNext" aria-label="Page suivante">›</button><span id="vwPos"></span></div>
+    <div><div class="lab">Dans le cours</div><div class="vw-used" id="vwUsed"></div></div>
+    <div class="vw-grid" id="vwGrid"></div>
+  </div>
+</div>
+<div class="selpop" id="selpop" hidden><button id="selAsk">Demander au tuteur</button></div>
+<div class="sch-zoom" id="schZoom" hidden></div>
+<div class="toast" id="toast" hidden></div>
+<!-- les schémas (schemas/index.js : même ordre) -->
+<script src="schemas/core.js"></script><script src="schemas/icones.js"></script><script src="schemas/pile-memoire.js"></script>
+<script src="schemas/zones.js"></script><script src="schemas/arbres.js"></script><script src="schemas/courbes.js"></script>
+<script src="schemas/processus.js"></script><script src="schemas/graphes.js"></script><script src="schemas/uml.js"></script><script src="schemas/donnees.js"></script>
+<script src="mermaid-fix.js"></script>
+<script src="lecteur-ui.js"></script>
+<script src="lecteur-nav.js"></script>
+<script src="lecteur-sources.js"></script>
+<script src="lecteur-vocab.js"></script>
+<script src="lecteur-serie.js"></script>
+<script src="lecteur-plus.js"></script>
+<script src="lecteur-stats.js"></script>
+<script src="ide-langs.js"></script>
+<script src="lecteur-ide.js"></script>
+</body>
+</html>

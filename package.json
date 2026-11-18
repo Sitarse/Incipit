@@ -1,0 +1,94 @@
+{
+  "name": "incipit",
+  "version": "2.0.0",
+  "description": "Incipit : tes photos de cours, PDF de diapos et notes deviennent un cours rédigé (Markdown pour Obsidian, et PDF), avec fiche, TP noté, flash cards et lecteur",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "launcher": "node launcher/build.js",
+    "test": "node tests/run-all.js",
+    "smoke": "node scripts/smoke.js",
+    "fetch-uv": "node scripts/fetch-uv.js",
+    "dist": "node scripts/fetch-uv.js && electron-builder --publish never"
+  },
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^44.9.1",
+    "electron-builder": "^26.15.3"
+  },
+  "dependencies": {
+    "@fontsource-variable/geist": "^5.3.0",
+    "@fontsource-variable/geist-mono": "^5.3.0",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
+    "monaco-editor": "^0.55.1"
+  },
+  "build": {
+    "appId": "fr.sitharse.incipit",
+    "productName": "Incipit",
+    "copyright": "Incipit",
+    "files": [
+      "src/**/*",
+      "assets/icon.ico",
+      "assets/logo.png",
+      "package.json",
+      "!**/__pycache__/**"
+    ],
+    "asarUnpack": [
+      "src/modules/cours/engine/**"
+    ],
+    "extraResources": [
+      {
+        "from": "build/uv/${os}-${arch}",
+        "to": "uv"
+      }
+    ],
+    "afterPack": "scripts/adhoc-sign.js",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "shortcutName": "Incipit",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "icon": "assets/logo.png",
+      "category": "public.app-category.education",
+      "identity": null
+    },
+    "dmg": {
+      "title": "Incipit"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "assets/logo.png",
+      "category": "Education",
+      "synopsis": "Tes photos de cours deviennent un cours rédigé",
+      "maintainer": "Incipit <incipit@users.noreply.github.com>"
+    }
+  },
+  "author": {
+    "name": "Incipit",
+    "email": "incipit@users.noreply.github.com"
+  },
+  "homepage": "https://github.com/Sitarse/Incipit"
+}

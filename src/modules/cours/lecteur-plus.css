@@ -1,0 +1,309 @@
+/* Le site d’un cours (suite de lecteur.css) : l’IDE, et les écrans d’ajouts1.png (quiz à choix, flash cards, exercice, parcours, statistiques). */
+/* ---------- l'IDE (lecteur-ide.js) : dans le cours, chaque exemple ; à droite, le même, vide (la barre flottante) ---------- */
+:root{--iw:clamp(560px,46vw,1200px)}
+.app.ide-on .rail,.app.ide-on .side{display:none!important}
+@media (min-width:1800px){.app.ide-on .main{padding-right:var(--iw)}}
+/* un IDE : la barre (fenêtre, langage, boutons), l'éditeur, puis la console ou la pile */
+.ide-box{margin:1.4em 0;border:1px solid var(--line-2);border-radius:var(--r-l);background:var(--bg-alt);overflow:hidden;font-size:15px;line-height:1.5}
+.ib-h{display:flex;align-items:center;gap:8px;min-height:50px;padding:7px 10px 7px 16px;background:var(--code-h);border-bottom:1px solid var(--line)}
+.ib-h>i{width:12px;height:12px;flex:none;border-radius:50%;background:#f25e67}
+.ib-h>i:nth-child(2){background:#f3ca3e}.ib-h>i:nth-child(3){background:#44c24a;margin-right:8px}
+.ib-lang{height:32px;padding:0 28px 0 10px;border:1px solid var(--line-2);border-radius:var(--r-s);background:var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238c8a9e' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 7px center/15px;
+  color:var(--text);font:600 13px var(--font);appearance:none;cursor:pointer}
+.ib-v{min-width:0;font-size:12px;color:var(--soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ib-sp{flex:1}
+.ib-btn{display:inline-flex;align-items:center;gap:7px;height:34px;padding:0 14px;border:1px solid var(--line-2);border-radius:var(--r-s);font-size:14px;font-weight:500;color:var(--text)}
+.ib-btn svg{width:14px;height:14px}
+.ib-btn:hover:not(:disabled){background:var(--hover)}
+.ib-btn.pri{border-color:transparent;background:var(--btn);color:#fff}
+.ib-btn.pri svg path{fill:currentColor;stroke:none}
+.ib-btn.pri:hover:not(:disabled){filter:brightness(1.1);background:var(--btn)}
+.ib-btn.danger{color:var(--red);border-color:color-mix(in oklch,var(--red) 45%,transparent)}
+.ib-btn:disabled{opacity:.4;cursor:default}
+.ib-ic{width:34px;height:34px;flex:none;display:grid;place-items:center;border-radius:var(--r-s);color:var(--muted)}
+.ib-ic:hover{background:var(--hover);color:var(--text)}
+.ib-ic svg{width:17px;height:17px}
+.ib-ic.done{color:var(--green)}
+.ib-miss{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding:10px 16px;border-bottom:1px solid var(--line);background:color-mix(in oklch,var(--orange) 10%,var(--bg-alt));font-size:14px;color:var(--muted)}
+.ib-miss span{flex:1;min-width:240px}
+.ib-miss b{color:var(--text)}
+.ib-ed{min-height:72px}
+.ib-ed>pre{margin:0;padding:14px 0;border:0;border-radius:0;background:none;font:15px/1.6 var(--mono);color:var(--text);counter-reset:l;overflow:auto}
+.ib-ed>pre .l{display:block;padding:0 20px 0 0;white-space:pre}
+.ib-ed>pre .l::before{counter-increment:l;content:counter(l);display:inline-block;width:52px;margin-right:16px;text-align:right;color:var(--faint)}
+.ib-low{border-top:1px solid var(--line);display:flex;flex-direction:column}
+.ib-tabs{flex:none;display:flex;align-items:center;gap:4px;padding:6px 12px 0;background:var(--code-h)}
+.ib-tabs button{height:32px;padding:0 14px;font-size:13px;font-weight:600;color:var(--soft);border-bottom:2px solid transparent}
+.ib-tabs button.on{color:var(--text);border-bottom-color:var(--accent)}
+.ib-state{font-size:12px;color:var(--soft)}
+.ib-term{height:240px;padding:10px 4px 6px 14px;background:#0f0f15}
+[data-theme=light] .ib-term{background:#fff}
+.ib-term .xterm{height:100%}
+.ib-pile{display:flex;flex-direction:column}
+.ib-pile-top{display:grid;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.ib-in{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:12px;font-size:13px;color:var(--soft)}
+.ib-in textarea{min-height:52px;max-height:110px;padding:7px 10px;border:1px solid var(--line-2);border-radius:var(--r-s);background:var(--bg);font:14px/1.4 var(--mono);color:var(--text);outline:none;resize:vertical}
+.ib-in textarea:focus{border-color:var(--accent)}
+.ib-nav{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+.ib-nav button{width:34px;height:34px;flex:none;border:1px solid var(--line-2);border-radius:var(--r-s);font-size:18px;color:var(--text)}
+.ib-nav button:disabled{opacity:.35;cursor:default}
+.ib-nav input{flex:1;accent-color:var(--accent)}
+.ib-nav span{min-width:150px;text-align:right;font-variant-numeric:tabular-nums}
+.ib-pile-body{max-height:460px;overflow:auto;padding:14px 16px 18px}
+.ib-hint{margin:6px 0;font-size:14px;color:var(--soft);display:flex;align-items:center;gap:10px}
+.ib-err{margin-bottom:12px;padding:10px 14px;border-radius:var(--r-m);font-size:14px;background:color-mix(in oklch,var(--red) 12%,transparent);color:var(--red)}
+.ib-err pre{margin:10px 0 0;max-height:240px;overflow:auto;font:12px/1.5 var(--mono);color:var(--text);white-space:pre-wrap}
+/* l'IDE vide, à droite : sur toute la hauteur, l'éditeur en haut, la console ou la pile en bas */
+.ide{position:fixed;right:0;top:64px;bottom:0;z-index:25;width:var(--iw);background:var(--side);border-left:1px solid var(--line-2);box-shadow:-24px 0 48px rgba(0,0,0,.25)}
+.ide.ide-box{margin:0;border-radius:0;border-width:0 0 0 1px;display:grid;grid-template-rows:auto auto minmax(160px,1fr) minmax(240px,44%)}
+.ide.ide-box .ib-ed{min-height:0}
+.ide.ide-box .ib-low{min-height:0}
+.ide.ide-box .ib-term{flex:1;height:auto;min-height:0}
+.ide.ide-box .ib-pile{flex:1;min-height:0}
+.ide.ide-box .ib-pile-body{flex:1;max-height:none;min-height:0}
+/* un petit bouton (Continuer →, dans les cartes) */
+.btn-p.sm,.btn-o.sm{height:38px;gap:8px;padding:0 16px;font-size:14px;font-weight:600;border-radius:var(--r-s)}
+/* ---------- la série du jour (lecteur-serie.js) : comme Duolingo ---------- */
+:root{--fire:#ff9600;--fire-2:#ffc800;--risk:#ff4b4b}
+.serie-chip{height:40px;display:inline-flex;align-items:center;gap:6px;padding:0 14px 0 10px;border-radius:999px;border:1.5px solid var(--line-2);font-weight:700;color:var(--soft)}
+.serie-chip svg{width:22px;height:22px;flex:none}
+.serie-chip b{font-size:17px;font-variant-numeric:tabular-nums}
+.serie-chip em{font-size:12px;font-style:normal;font-weight:600}
+.serie-chip .sc-ok{display:grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--fire);color:#fff}
+.serie-chip .sc-ok svg{width:12px;height:12px;stroke-width:3.5}
+.serie-chip[data-state=done]{border-color:color-mix(in oklch,var(--fire) 60%,transparent);background:color-mix(in oklch,var(--fire) 14%,transparent);color:var(--fire)}
+.serie-chip[data-state=done] svg{fill:var(--fire);stroke:var(--fire-2)}
+.serie-chip[data-state=todo] em{color:var(--muted)}
+.serie-chip[data-state=risk]{border-color:var(--risk);background:color-mix(in oklch,var(--risk) 18%,transparent);color:var(--risk);animation:riskpulse 1.6s ease-in-out infinite}
+.serie-chip[data-state=risk] em{font-variant-numeric:tabular-nums;font-size:13px}
+@keyframes riskpulse{0%,100%{box-shadow:0 0 0 0 color-mix(in oklch,var(--risk) 55%,transparent)}50%{box-shadow:0 0 0 7px transparent}}
+/* la grande carte */
+.sh{display:grid;grid-template-columns:190px minmax(0,1fr);gap:28px;align-items:center;margin:0 0 30px;padding:26px 30px;border-radius:var(--r-l);border:2px solid var(--line-2);background:var(--raise)}
+.sh-fire{display:grid;justify-items:center;text-align:center}
+.sh-fire svg{width:96px;height:96px;stroke-width:1.4;color:var(--faint)}
+.sh-fire b{margin-top:-6px;font-size:52px;font-weight:800;line-height:1;letter-spacing:-.03em;font-variant-numeric:tabular-nums;color:var(--muted)}
+.sh-fire small{margin-top:4px;font-size:13px;font-weight:600;color:var(--soft)}
+.sh[data-state=done]{border-color:color-mix(in oklch,var(--fire) 55%,transparent);background:linear-gradient(135deg,color-mix(in oklch,var(--fire) 16%,var(--raise)),var(--raise) 60%)}
+.sh[data-state=done] .sh-fire svg{fill:var(--fire);stroke:var(--fire-2);filter:drop-shadow(0 6px 18px color-mix(in oklch,var(--fire) 55%,transparent))}
+.sh[data-state=done] .sh-fire b{color:var(--fire)}
+.sh[data-state=risk]{border-color:var(--risk);background:linear-gradient(135deg,color-mix(in oklch,var(--risk) 22%,var(--raise)),var(--raise) 65%);animation:riskpulse 1.6s ease-in-out infinite}
+.sh[data-state=risk] .sh-fire svg{color:var(--risk)}
+.sh[data-state=risk] .sh-fire b{color:var(--risk)}
+.sh-msg{display:grid;gap:4px}
+.sh-msg b{display:flex;align-items:center;gap:8px;font-size:22px;font-weight:750;letter-spacing:-.01em;color:var(--text)}
+.sh-msg b svg{width:22px;height:22px;stroke-width:3;color:var(--green)}
+.sh-msg b.sh-ok{color:var(--green)}
+.sh-msg b.sh-risk{color:var(--risk)}
+.sh-msg em{font-style:normal;font-variant-numeric:tabular-nums}
+.sh-msg span{font-size:15px;color:var(--muted)}
+.sh-week{display:flex;gap:10px;margin:18px 0 4px}
+.sw{display:grid;justify-items:center;gap:5px}
+.sw i{width:34px;height:34px;display:grid;place-items:center;border-radius:50%;border:2px solid var(--line-2);color:#fff}
+.sw i svg{width:16px;height:16px;stroke-width:3.5}
+.sw small{font-size:12px;font-weight:600;color:var(--soft)}
+.sw.ok i{border-color:var(--fire);background:var(--fire)}
+.sw.now i{box-shadow:0 0 0 3px color-mix(in oklch,var(--fire) 35%,transparent)}
+.sw.now small{color:var(--text)}
+.sw.fut i{opacity:.4}
+.sg{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:14px}
+.sg i{font-size:12px;font-style:normal;color:var(--soft)}
+.sg-it{display:inline-flex;align-items:baseline;gap:6px;padding:6px 12px;border-radius:999px;background:var(--hover);font-size:13px;color:var(--muted)}
+.sg-it b{font-size:14px;font-variant-numeric:tabular-nums;color:var(--text)}
+.sg-it.ok{background:color-mix(in oklch,var(--green) 16%,transparent);color:var(--green)}
+.sg-it.ok b{color:var(--green)}
+.sh-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-top:16px}
+.sh-foot small{font-size:13px;color:var(--soft)}
+/* le bandeau du soir : en haut de la colonne, il reste quand on défile */
+.serie-banner{position:sticky;top:0;z-index:15;display:flex;align-items:center;gap:18px;margin:0 auto;max-width:1260px;padding:16px 26px;background:linear-gradient(90deg,#c81e1e,#ff4b4b 55%,#ff7a45);color:#fff;box-shadow:0 10px 30px rgba(200,30,30,.35)}
+.serie-banner>svg{width:40px;height:40px;flex:none;fill:#ffd24a;stroke:#fff;animation:flick 1.2s ease-in-out infinite}
+.serie-banner span{flex:1;min-width:0;display:grid}
+.serie-banner b{font-size:19px;font-weight:800}
+.serie-banner small{font-size:13.5px;opacity:.9}
+.serie-banner strong{font-size:38px;font-weight:800;line-height:1;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.serie-banner button{height:44px;padding:0 20px;border-radius:var(--r-m);background:#fff;color:#c81e1e;font-size:15px;font-weight:800}
+.serie-banner button:hover{filter:brightness(.95)}
+@keyframes flick{0%,100%{transform:scale(1) rotate(-3deg)}50%{transform:scale(1.12) rotate(3deg)}}
+/* la fête : l'objectif du jour atteint */
+.serie-fete{position:fixed;inset:0;z-index:90;display:grid;place-items:center;background:rgba(8,6,20,.72);animation:fadein .25s ease-out}
+.sf-box{display:grid;justify-items:center;gap:6px;width:min(460px,90vw);padding:34px 30px 28px;border-radius:24px;background:var(--side);border:2px solid color-mix(in oklch,var(--fire) 55%,transparent);text-align:center;animation:popin .45s cubic-bezier(.2,1.6,.4,1)}
+.sf-fire svg{width:120px;height:120px;fill:var(--fire);stroke:var(--fire-2);stroke-width:1.2;filter:drop-shadow(0 10px 30px color-mix(in oklch,var(--fire) 70%,transparent));animation:flick 1.2s ease-in-out infinite}
+.sf-n{font-size:76px;font-weight:800;line-height:.9;letter-spacing:-.04em;color:var(--fire)}
+.sf-t{font-size:22px;font-weight:800;color:var(--fire)}
+.sf-box p{margin:8px 0 0;font-size:15px;color:var(--muted)}
+.sf-box .sh-week{margin:16px 0 18px}
+.sf-box .btn-p{width:100%;justify-content:center;height:50px;font-size:17px;font-weight:800;background:var(--fire);border-radius:var(--r-m)}
+@keyframes fadein{from{opacity:0}}
+@keyframes popin{from{transform:scale(.7);opacity:0}}
+@media (prefers-reduced-motion:reduce){.serie-chip,.sh,.serie-banner>svg,.sf-fire svg,.sf-box,.serie-fete{animation:none!important}}
+/* ---------- le vocabulaire en vert (lecteur-vocab.js) : le mot, sa bulle de définition, le tableau ---------- */
+.body a.voc{padding:.02em .3em;border-radius:5px;background:color-mix(in oklch,var(--green) 13%,transparent);color:var(--green);font-weight:600;text-decoration:none;box-decoration-break:clone;-webkit-box-decoration-break:clone;transition:background .15s}
+.body a.voc:hover{background:color-mix(in oklch,var(--green) 26%,transparent);text-decoration:none}
+.body a.voc.voc-flash{animation:vocflash 2.6s ease-out}
+.body a.lien-interne[data-go]{color:var(--text);cursor:pointer}
+.body a.lien-interne[data-go]:hover{color:var(--green)}
+.voc-tip{position:fixed;z-index:70;width:min(380px,86vw);padding:14px 16px 12px;border:1px solid color-mix(in oklch,var(--green) 40%,var(--line-2));border-left:3px solid var(--green);border-radius:var(--r-m);background:var(--side);box-shadow:0 16px 40px rgba(0,0,0,.4);pointer-events:none;font-size:14px;line-height:1.5;color:var(--muted)}
+.voc-tip b{display:block;margin-bottom:4px;font-size:15px;color:var(--green)}
+.voc-tip .vt-def{color:var(--text)}
+.voc-tip code{font-family:var(--mono);font-size:.88em;padding:.05em .35em;border-radius:5px;background:var(--hover)}
+.voc-tip small{display:block;margin-top:8px;font-size:12.5px;color:var(--soft)}
+.voc-tip em{display:block;margin-top:8px;font-size:12px;font-style:normal;color:var(--green);opacity:.85}
+.body table.voc-table{border-color:color-mix(in oklch,var(--green) 28%,var(--line))}
+.body table.voc-table th{background:color-mix(in oklch,var(--green) 10%,var(--code-h));color:var(--green);font-size:12.5px;letter-spacing:.06em;text-transform:uppercase}
+.body table.voc-table td:first-child{width:22%;border-left:3px solid var(--green);color:var(--green);font-weight:650}
+.body table.voc-table td:first-child strong,.body table.voc-table td:first-child a{color:var(--green)}
+.body table.voc-table td:first-child a{text-decoration:none}
+.body table.voc-table td:first-child a:hover{text-decoration:underline}
+.body table.voc-table td:last-child{color:var(--soft);font-size:.92em}
+.body table.voc-table tr.voc-hit td{animation:vochit 2.6s ease-out}
+.voc-back{height:32px;padding:0 14px;border:1px solid color-mix(in oklch,var(--green) 55%,transparent);border-radius:var(--r-s);font-size:13px;font-weight:600;color:var(--green)}
+.voc-back:hover{background:color-mix(in oklch,var(--green) 12%,transparent)}
+@keyframes vochit{0%,35%{background:color-mix(in oklch,var(--green) 28%,transparent)}100%{background:transparent}}
+@keyframes vocflash{0%,35%{box-shadow:0 0 0 4px color-mix(in oklch,var(--green) 45%,transparent)}100%{box-shadow:0 0 0 4px transparent}}
+/* ---------- Sources (lecteur-sources.js) : diapos, tes notes, tes liens, pour aller plus loin ---------- */
+.side-src{gap:0}
+.src-sec{display:flex;flex-direction:column;gap:14px;padding:4px 0 22px;border-bottom:1px solid var(--line)}
+.src-sec+.src-sec{padding-top:18px}
+.src-sec:last-child{border-bottom:0}
+.src-sec .lab{margin:0}
+.src-sec .none{padding:0}
+.src-more{align-self:flex-start;font-size:13px;color:var(--accent-t);text-decoration:underline;text-underline-offset:3px}
+.src-sub{margin-top:4px;font-size:13px;font-weight:600;color:var(--muted)}
+.src-link{display:flex;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r-m);background:var(--raise);color:var(--text);text-decoration:none}
+.src-link:hover{border-color:var(--btn)}
+.src-link>svg{width:18px;height:18px;flex:none;margin-top:2px;color:var(--accent-t)}
+.src-link span{min-width:0;display:grid;gap:2px}
+.src-link b{font-size:14px;font-weight:600;line-height:1.35;overflow-wrap:anywhere}
+.src-link small{font-size:12px;color:var(--soft)}
+.src-link p,.src-vt p{margin:4px 0 0;font-size:13px;line-height:1.5;color:var(--muted)}
+.src-lang{margin-left:6px;padding:0 5px;border-radius:4px;background:var(--hover);font-size:10.5px;font-style:normal;font-weight:600;color:var(--muted)}
+.src-vid{display:grid;gap:10px;padding:12px;border:1px solid var(--line);border-radius:var(--r-m);background:var(--raise)}
+.src-thumb{position:relative;display:grid;place-items:center;aspect-ratio:16/9;border-radius:var(--r-s);background:#000 center/cover no-repeat;color:#fff}
+.src-thumb>svg{width:44px;height:44px;padding:12px;border-radius:50%;background:rgba(0,0,0,.6);fill:#fff;stroke:none}
+.src-thumb:hover>svg{background:#e62117}
+.src-at{position:absolute;right:8px;bottom:8px;padding:2px 8px;border-radius:6px;background:var(--btn);font-size:12px;font-weight:600}
+.src-at.dim{background:rgba(0,0,0,.75)}
+.src-vt{display:grid;gap:2px;min-width:0}
+.src-vt>a{color:var(--text);text-decoration:none}
+.src-vt>a:hover b{text-decoration:underline}
+.src-vt b{font-size:14px;line-height:1.35}
+.src-vt small{font-size:12px;color:var(--soft)}
+.src-vt .src-pass{color:var(--accent-t)}
+.src-vt details{margin-top:6px;font-size:12.5px}
+.src-vt summary{cursor:pointer;color:var(--soft)}
+.src-vt details a{display:flex;gap:10px;padding:4px 6px;border-radius:5px;color:var(--muted);text-decoration:none}
+.src-vt details a span{min-width:44px;font-variant-numeric:tabular-nums;color:var(--soft)}
+.src-vt details a:hover{background:var(--hover);color:var(--text)}
+.src-vt details a.on{background:var(--active);color:var(--text)}
+.src-acts{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.src-acts small{font-size:12px;color:var(--soft)}
+.src-wait{display:flex;align-items:center;gap:10px;margin:0;font-size:13.5px;line-height:1.5;color:var(--muted)}
+.src-err{margin:0;padding:8px 12px;border-radius:var(--r-s);background:color-mix(in oklch,var(--red) 12%,transparent);font-size:13px;color:var(--red)}
+/* un extrait du cours (une signature, un squelette) : un bloc de code, sans IDE */
+.code-h .frag{margin-left:auto;font-size:12px;color:var(--soft)}
+.code-h .frag+.copy{margin-left:10px}
+/* la pile : les appels, leurs variables */
+.ide-cols{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:18px}
+.ide-cols .lab{margin-bottom:8px}
+.ide-fr{margin-bottom:10px;border:1px solid var(--line);border-radius:var(--r-m);background:var(--bg-alt);overflow:hidden}
+.ide-fr.ide-fr-top{border-color:color-mix(in oklch,var(--accent) 55%,transparent)}
+.ide-fr-h{display:flex;justify-content:space-between;gap:10px;padding:8px 12px;background:var(--code-h);font-size:13px}
+.ide-fr.ide-fr-top .ide-fr-h{background:var(--active)}
+.ide-fr-h b{font:600 13px var(--mono);color:var(--text)}
+.ide-fr-h span{color:var(--soft)}
+.ide-fr table{width:100%;border-collapse:collapse;font:13px/1.45 var(--mono)}
+.ide-fr td{padding:5px 12px;border-top:1px solid var(--line);vertical-align:top;overflow-wrap:anywhere}
+.ide-fr td:first-child{width:34%;color:var(--accent-t)}
+.ide-fr tr.chg td:last-child{color:var(--yellow);font-weight:600}
+.ide-fr tr.new td:last-child{color:var(--green)}
+.ide-none{margin:0;padding:8px 12px;font-size:13px;color:var(--soft)}
+.ide-out{margin:0;min-height:60px;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-m);background:#0f0f15;font:13px/1.5 var(--mono);color:#e7e4ec;white-space:pre-wrap;overflow-wrap:anywhere}
+[data-theme=light] .ide-out{background:#fff;color:var(--text)}
+.ide-exc,.ide-ret,.ide-err{margin-bottom:12px;padding:10px 14px;border-radius:var(--r-m);font-size:14px}
+.ide-exc,.ide-err{background:color-mix(in oklch,var(--red) 12%,transparent);color:var(--red)}
+.ide-ret{background:color-mix(in oklch,var(--green) 12%,transparent);color:var(--green)}
+.ide-err pre{margin:10px 0 0;max-height:240px;overflow:auto;font:12px/1.5 var(--mono);color:var(--text);white-space:pre-wrap}
+.ide-cur{background:color-mix(in oklch,var(--accent) 22%,transparent)}
+.ide-cur-g{background:var(--accent);border-radius:50%;margin-left:6px;width:8px!important;height:8px!important;margin-top:8px}
+
+/* ---------- les écrans d'ajouts1.png : quiz à choix, flash cards, exercice, parcours, statistiques ---------- */
+/* le quiz : la question, puis des choix en rangées, celui choisi en indigo */
+.qq{margin:26px 0 18px;font-size:19px;font-weight:600;line-height:1.45;color:var(--text)}
+.qos{display:grid;gap:12px}
+.qo{display:flex;align-items:center;gap:16px;width:100%;min-height:56px;padding:12px 20px;border:1px solid var(--line);border-radius:var(--r-m);background:var(--raise);text-align:left;font-size:16px;color:var(--text)}
+.qo:hover:not(:disabled){border-color:var(--line-2)}
+.qo i{flex:none;width:20px;height:20px;border-radius:50%;border:2px solid var(--faint)}
+.qo.on{border-color:var(--btn);background:var(--active)}
+.qo.on i{border-color:var(--btn);background:radial-gradient(circle,#fff 0 4px,var(--btn) 5px)}
+.qo.ok{border-color:var(--green);background:color-mix(in oklch,var(--green) 14%,var(--raise))}
+.qo.ok i{border-color:var(--green);background:radial-gradient(circle,#fff 0 4px,var(--green) 5px)}
+.qo.ko{border-color:var(--red);background:color-mix(in oklch,var(--red) 12%,var(--raise))}
+.qo.ko i{border-color:var(--red)}
+.qo:disabled{cursor:default}
+.qo code,.qq code{font-family:var(--mono);font-size:.9em}
+/* les flash cards : la carte entre deux flèches rondes, les notes en pastilles colorées */
+.fc{display:grid;grid-template-columns:48px minmax(0,1fr) 48px;align-items:center;gap:18px}
+.fc .pn-card{min-height:220px;align-items:center;justify-content:center;text-align:center;border-color:color-mix(in oklch,var(--btn) 35%,var(--line));background:var(--active)}
+.fc .pn-card .lab{align-self:center}
+.fc .pn-recto{font-size:22px}
+.fc-arrow{width:44px;height:44px;border-radius:50%;border:1px solid var(--line-2);background:var(--raise);font-size:22px;color:var(--muted)}
+.fc-arrow:hover:not(:disabled){color:var(--text);border-color:var(--btn)}
+.fc-arrow:disabled{opacity:.3;cursor:default}
+.pn-grades{display:flex;justify-content:center;flex-wrap:wrap;gap:16px;margin-top:22px}
+.pn-grade{height:auto;min-width:150px;padding:10px 22px;display:grid;justify-items:center;gap:2px;border-radius:999px;border:1.5px solid var(--line-2);background:transparent}
+.pn-grade b{display:inline-flex;align-items:center;gap:8px;font-size:15px}
+.pn-grade b svg{width:16px;height:16px}
+.pn-grade small{font-size:12px}
+.pn-grade[data-g=again]{border-color:color-mix(in oklch,var(--red) 70%,transparent);background:color-mix(in oklch,var(--red) 9%,transparent)}
+.pn-grade[data-g=again] b{color:var(--red)}
+.pn-grade[data-g=hard]{border-color:color-mix(in oklch,var(--orange) 70%,transparent);background:color-mix(in oklch,var(--orange) 9%,transparent)}
+.pn-grade[data-g=hard] b{color:var(--orange)}
+.pn-grade[data-g=good]{border-color:color-mix(in oklch,var(--green) 70%,transparent);background:color-mix(in oklch,var(--green) 9%,transparent)}
+.pn-grade[data-g=good] b{color:var(--green)}
+.pn-grade:hover{filter:brightness(1.15)}
+/* l'exercice de code : une fenêtre de code */
+.pn-codewin{margin:0}
+.pn-codewin .pn-answer.code{display:block;min-height:220px;border:0;border-radius:0;background:var(--bg-alt);padding:16px 20px}
+.pn-codewin .code-h .copy{font-size:13px;color:var(--muted)}
+/* votre progression : les parties en étapes reliées, la prochaine étape */
+.steps-card{margin:24px 0 8px;padding:22px 26px;border:1px solid var(--line);border-radius:var(--r-l);background:var(--raise)}
+.steps-card h2{margin:4px 0 18px;font-size:1.25em;font-weight:700}
+.steps{display:flex;margin:0;padding:0;list-style:none}
+.steps li{flex:1;min-width:0;display:grid;justify-items:center;gap:10px;position:relative;text-align:center}
+.steps li+li::before{content:"";position:absolute;top:17px;right:calc(50% + 22px);left:calc(-50% + 22px);height:2px;background:var(--line-2)}
+.steps li[data-st=done]+li::before,.steps li[data-st=done]::before{background:var(--btn)}
+.steps .dot{position:relative;z-index:1;width:36px;height:36px;display:grid;place-items:center;border-radius:50%;border:2px solid var(--line-2);background:var(--raise);font-size:14px;font-weight:600;color:var(--soft)}
+.steps .dot svg{width:16px;height:16px;stroke-width:3}
+.steps li[data-st=done] .dot{border-color:var(--btn);background:var(--btn);color:#fff}
+.steps li[data-st=cur] .dot{border-color:#fff;box-shadow:0 0 0 4px color-mix(in oklch,var(--btn) 45%,transparent);color:var(--text)}
+[data-theme=light] .steps li[data-st=cur] .dot{border-color:var(--btn)}
+.steps .nm{max-width:150px;font-size:13px;line-height:1.35;color:var(--soft)}
+.steps li[data-st=cur] .nm{font-weight:600;color:var(--text)}
+.next-step{display:flex;align-items:center;gap:14px;margin-top:22px;padding:14px 18px;border-radius:var(--r-m);background:var(--active)}
+.next-step>svg{width:24px;height:24px;flex:none;color:var(--btn);fill:var(--btn)}
+.next-step span{flex:1;min-width:0;display:grid}
+.next-step b{font-size:14px;color:var(--accent-t)}
+.next-step small{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* mes statistiques : la maîtrise en anneau, la courbe, trois tuiles */
+.stats{display:grid;grid-template-columns:220px minmax(0,1fr);gap:28px;align-items:center;margin-top:24px;padding:24px;border:1px solid var(--line);border-radius:var(--r-l);background:var(--raise)}
+.st-mastery{display:grid;justify-items:center;gap:4px;text-align:center}
+.st-mastery b{margin-top:6px;font-size:15px}
+.st-mastery small{font-size:13px;color:var(--soft)}
+.donut{width:150px;height:150px}
+.donut circle{fill:none;stroke-width:12}
+.dn-bg{stroke:var(--line)}
+.dn-v{stroke:var(--btn);stroke-linecap:round}
+.donut text{fill:var(--text);font:700 28px var(--font);stroke:none}
+.st-chart .lab{margin-bottom:8px}
+.chart{width:100%;height:auto}
+.chart text{fill:var(--soft);font:12px var(--font);stroke:none}
+.ch-grid{stroke:var(--line);stroke-width:1;fill:none}
+.ch-line{fill:none;stroke:var(--btn);stroke-width:2.5;stroke-linejoin:round}
+.ch-dot{fill:var(--btn);stroke:var(--raise);stroke-width:2}
+.st-tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:16px}
+.st-tile{display:flex;align-items:center;gap:16px;padding:18px 20px;border:1px solid var(--line);border-radius:var(--r-l);background:var(--raise)}
+.st-tile>svg{width:30px;height:30px;flex:none}
+.st-tile:nth-child(1)>svg{color:#e8c95a}.st-tile:nth-child(2)>svg{color:#7aa2f7}.st-tile:nth-child(3)>svg{color:#f08a4b}
+.st-tile span{display:grid}
+.st-tile b{font-size:24px;font-weight:700;line-height:1.2}
+.st-tile small{font-size:13px;color:var(--soft)}
+
