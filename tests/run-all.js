@@ -8,7 +8,8 @@ const path = require('node:path')
 const annotate = (file, text) => {
   if (!process.env.GITHUB_ACTIONS) return
   const lines = text.split(/\r?\n/).filter(l => l.trim()), i = lines.findIndex(l => /Error|ECHEC|assert/i.test(l))
-  const msg = lines.slice(Math.max(0, i), Math.max(0, i) + 6).join('\n').slice(0, 900)
+  const where = lines.find(l => /\.test\.js:\d+/.test(l)) // la ligne du test qui a échoué (la pile)
+  const msg = [...lines.slice(Math.max(0, i), Math.max(0, i) + 6), where].filter(Boolean).join('\n').slice(0, 900)
   console.log(`::error title=Test en échec : ${file}::${msg.replace(/%/g, '%25').replace(/\r/g, '').replace(/\n/g, '%0A')}`)
 }
 

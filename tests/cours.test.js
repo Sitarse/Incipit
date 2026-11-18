@@ -187,8 +187,9 @@ for (const bad of ['sk-ant-xyz1234567890', 'nvapi-a b', 'nvapi-', 42]) assert.eq
 assert.equal(lib.validSetting('nimModel', 'meta/llama-3.3-70b-instruct'), 'meta/llama-3.3-70b-instruct')
 assert.equal(lib.validSetting('nimModel', 'a b'), undefined)
 assert.equal(lib.validSetting('longueur', 'detaille'), 'detaille')
-assert.equal(lib.validSetting('destination', 'C:\\Users\\x\\Cours'), 'C:\\Users\\x\\Cours')
-for (const bad of ['Cours', '', 42, `C:\\${'a'.repeat(400)}`]) assert.equal(lib.validSetting('destination', bad), undefined, `destination ${String(bad).slice(0, 20)}`)
+const absDest = path.join(path.resolve(path.sep), 'Users', 'x', 'Cours') // un chemin absolu de ce système (C:\Users\x\Cours, /Users/x/Cours)
+assert.equal(lib.validSetting('destination', absDest), absDest)
+for (const bad of ['Cours', '', 42, `${path.resolve(path.sep)}${'a'.repeat(400)}`]) assert.equal(lib.validSetting('destination', bad), undefined, `destination ${String(bad).slice(0, 20)}`)
 assert.equal(lib.validSetting('__proto__', 'x'), undefined)
 assert.deepEqual(lib.jobOptions({ cours: true, tp: 'oui', questions: 99, focus: '  les piles  ', niveau: '' }),
   { cours: true, sujet: false, fiche: false, tp: false, cartes: false, niveau: 'comme le cours', focus: 'les piles', questions: 0 })
