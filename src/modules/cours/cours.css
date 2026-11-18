@@ -333,3 +333,5 @@
 .sa[data-state=done] em { font-size: 40px; color: var(--fire) }
 @keyframes srglow { 50% { box-shadow: 0 10px 44px color-mix(in srgb, var(--risk) 60%, transparent) } }
 @media (prefers-reduced-motion: reduce) { .hdr-serie, .sr-fire svg, .sa-fire svg, [data-alert=serie] #notch { animation: none !important } }
+/* Réglages : en bas à gauche de la fenêtre, toujours visible (collé en bas quand la colonne défile) */
+.cn-foot { margin-top: auto; position: sticky; bottom: 0; padding-top: 12px; background: #1a1a1b }

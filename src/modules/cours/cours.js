@@ -88,7 +88,8 @@ const IC = (() => {
     if (!r && l) blocks.push(`<div class="cn-block"><span class="cn-k">Reprendre la lecture</span><button class="cn-resume" data-cn="read" data-path="${esc(l.path)}" title="Ouvrir le cours">
       <span><b>${esc(l.titre)}</b><small>${esc(l.matiere)} · ${esc(l.type)} · ${ago(l.at)}</small></span><i>${svg(P.book)}</i></button></div>`)
     else if (!r && lib.courses.length) blocks.push('<p class="cn-tip">Un clic sur un cours l’ouvre dans une grande fenêtre : le cours, ses diapos, sa fiche, ses flash cards et son TP.</p>')
-    setHtml(todayEl, `<div class="cn-colh"><b>Aujourd’hui</b><small>${fr(Date.now(), { weekday: 'short', day: 'numeric', month: 'short' })}</small></div>${blocks.join('')}`)
+    setHtml(todayEl, `<div class="cn-colh"><b>Aujourd’hui</b><small>${fr(Date.now(), { weekday: 'short', day: 'numeric', month: 'short' })}</small></div>${blocks.join('')}
+      <div class="cn-foot">${btn('settings', 'Réglages', { icon: P.sliders, cls: 'cn-sec', title: 'Réglages des cours : qui écrit, les clés, le dossier' })}</div>`)
     bars(todayEl)
   }
   function runBlock(r) {
@@ -110,7 +111,7 @@ const IC = (() => {
     const log = rightEl.querySelector('.cn-calls, .cn-logs')
     if (log && S.run?.status === 'run') log.scrollTop = log.scrollHeight
   }
-  const tools = () => `<span class="cn-tools"><button class="cn-add" data-cn="newOpen">${svg(P.plus)}Nouveau cours</button>${btn('settings', '', { icon: P.sliders, cls: 'cn-ic', title: 'Réglages des cours' })}</span>`
+  const tools = () => `<span class="cn-tools"><button class="cn-add" data-cn="newOpen">${svg(P.plus)}Nouveau cours</button></span>`
   function homeView() {
     const list = S.library.courses, groups = new Map()
     for (const c of list) (groups.get(c.matiere) ?? groups.set(c.matiere, []).get(c.matiere)).push(c)
