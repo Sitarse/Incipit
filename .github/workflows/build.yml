@@ -39,7 +39,7 @@ jobs:
       - name: Moteur Python (auto-test)
         run: uv run --script src/modules/cours/engine/generator.py --self-test
 
-      - name: Essai de démarrage (Linux : écran virtuel)
+      - name: Essai de démarrage (Linux, écran virtuel)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
