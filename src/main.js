@@ -59,6 +59,17 @@ function createWindow() {
         right: document.querySelector('.cn-right')?.innerText.length ?? 0, api: typeof window.api })`)
       fs.writeFileSync(path.join(SMOKE, 'etat.json'), JSON.stringify({ probe: JSON.parse(probe), errors }, null, 2))
       fs.writeFileSync(path.join(SMOKE, 'ecran.png'), (await win.webContents.capturePage()).toPNG())
+      if (process.env.INCIPIT_SMOKE_MENU) {
+        // Le choix du moteur et du modèle dans la colonne de gauche : ouvert, un autre moteur, puis un modèle de celui-là
+        const click = sel => win.webContents.executeJavaScript(`(() => { const b = document.querySelector('${sel}'); b?.click(); return !!b })()`)
+        const wait = ms => new Promise(r => setTimeout(r, ms))
+        const shot = async name => fs.writeFileSync(path.join(SMOKE, name), (await win.webContents.capturePage()).toPNG())
+        const steps = [['menu', '[data-cn=menu]'], ['moteur', '[data-cn=set][data-k=moteur][data-v=gemini-pro]'], ['modele', '[data-cn=set][data-k=geminiProModel][data-v=gemini-4-argon]']]
+        fs.writeFileSync(path.join(SMOKE, 'menu.txt'), '')
+        for (const [name, sel] of steps) { fs.appendFileSync(path.join(SMOKE, 'menu.txt'), `${name} ${await click(sel)}\n`); await wait(700); await shot(`menu-${name}.png`) }
+        const choix = await win.webContents.executeJavaScript(`document.querySelector('.cn-quick-btn b')?.textContent`)
+        fs.appendFileSync(path.join(SMOKE, 'menu.txt'), `choix : ${choix}\n`)
+      }
       if (process.env.INCIPIT_SMOKE_REGLAGES) {
         // Les réglages des cours, le volet « Avancé » ouvert (clés NVIDIA et Gemini)
         const click = sel => win.webContents.executeJavaScript(`(() => { const b = document.querySelector('${sel}'); b?.click(); return !!b })()`)

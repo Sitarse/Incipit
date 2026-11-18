@@ -31,7 +31,7 @@ const IC = (() => {
     library: { courses: [], due: 0, matieres: [], last: null }, settings: null, run: null, details: null,
     draft: { matiere: stored('matiere', ''), type: stored('type', 'CM'), titre: stored('titre', ''), options: { fiche: true, cartes: true, ...stored('extras', {}) },
       files: [], link: false, other: false },
-    notice: null, catalog: null, catalogOr: null, pick: null, adv: false, thumbs: new Map(),
+    notice: null, catalog: null, catalogOr: null, menu: null, pick: null, adv: false, thumbs: new Map(),
   }
   const views = {} // overlays : nom -> () => HTML (revise.js y ajoute cards)
   const actions = {} // data-cn -> (élément) => …
@@ -74,6 +74,29 @@ const IC = (() => {
   page.addEventListener('focusout', () => setTimeout(() => { if (pending && !editingIn(edEl)) renderEd() }))
 
   // À gauche : ce qu'il y a à faire aujourd'hui
+  // Qui écrit les cours, et avec quel modèle : changé d'un clic, sans passer par les réglages. Fermé, un bouton dit le choix
+  // en cours ; ouvert, les moteurs (avec leur prix) puis les modèles du moteur choisi. Les noms hors liste se tapent dans les réglages.
+  const MODEL_KEY = { 'claude-cli': 'claudeModel', gemini: 'geminiModel', 'gemini-pro': 'geminiProModel', anthropic: 'anthropicModel', openai: 'openaiModel', openrouter: 'openrouterModel', gratuit: 'nimModel' }
+  const MODELS_KEY = { 'claude-cli': 'claudeModels', gemini: 'geminiModels', 'gemini-pro': 'geminiProModels', anthropic: 'anthropicModels', openai: 'openaiModels', openrouter: 'openrouterModels', gratuit: 'nimModels' }
+  function quickPicker() {
+    const s = S.settings, e = engine()
+    if (!s || !e) return ''
+    const open = S.menu === 'engine'
+    const button = `<button class="cn-quick-btn" data-cn="menu" data-on="${open}" title="Changer qui écrit les cours et son modèle"><i data-ok="${!e.souci}"></i>
+      <span><small>Écrit par</small><b>${esc(engineLabel())}</b></span>${svg(P.down)}</button>`
+    if (!open) return button
+    const PRIX = { abonnement: 'abonnement', payant: 'payant', gratuit: 'gratuit' }
+    const engines = s.moteurs.map(m => `<button data-cn="set" data-k="moteur" data-v="${esc(m.code)}" data-on="${m.code === s.moteur}"><span>${esc(m.nom)}</span><small>${PRIX[m.prix]}${m.souci ? ' · clé à ajouter' : ''}</small></button>`).join('')
+    const key = MODEL_KEY[s.moteur]
+    const raw = (s.moteur === 'gratuit' ? S.catalog : s.moteur === 'openrouter' ? S.catalogOr : null) ?? s[MODELS_KEY[s.moteur]] ?? []
+    const list = raw.map(m => (Array.isArray(m) ? m : [m, m]))
+    if (key && s[key] && !list.some(([k]) => k === s[key])) list.unshift([s[key], s[key]]) // un nom tapé dans les réglages reste visible
+    const models = list.map(([k, l]) => `<button data-cn="set" data-k="${key}" data-v="${esc(k)}" data-on="${k === s[key]}"><span>${esc(l)}</span></button>`).join('')
+    return `${button}<div class="cn-quick">
+      <h6>Moteur</h6><div class="cn-quick-list all">${engines}</div>
+      ${e.souci ? `<p class="cn-hint" data-bad="true">${esc(e.souci)}</p>${btn('goKeys', 'Ajouter la clé', { cls: 'cn-sec cn-small' })}` : ''}
+      ${key ? `<h6>Modèle</h6><div class="cn-quick-list">${models}</div>` : ''}</div>`
+  }
   function renderToday() {
     const r = S.run, lib = S.library, blocks = []
     if (typeof SERIE !== 'undefined') { const b = SERIE.block(); if (b) blocks.push(b) } // la série du jour (serie-ui.js)
@@ -88,8 +111,10 @@ const IC = (() => {
     if (!r && l) blocks.push(`<div class="cn-block"><span class="cn-k">Reprendre la lecture</span><button class="cn-resume" data-cn="read" data-path="${esc(l.path)}" title="Ouvrir le cours">
       <span><b>${esc(l.titre)}</b><small>${esc(l.matiere)} · ${esc(l.type)} · ${ago(l.at)}</small></span><i>${svg(P.book)}</i></button></div>`)
     else if (!r && lib.courses.length) blocks.push('<p class="cn-tip">Un clic sur un cours l’ouvre dans une grande fenêtre : le cours, ses diapos, sa fiche, ses flash cards et son TP.</p>')
+    const top = todayEl.scrollTop // la colonne garde sa position quand le choix du moteur change
     setHtml(todayEl, `<div class="cn-colh"><b>Aujourd’hui</b><small>${fr(Date.now(), { weekday: 'short', day: 'numeric', month: 'short' })}</small></div>${blocks.join('')}
-      <div class="cn-foot">${btn('settings', 'Réglages', { icon: P.sliders, cls: 'cn-sec', title: 'Réglages des cours : qui écrit, les clés, le dossier' })}</div>`)
+      <div class="cn-bottom">${quickPicker()}${btn('settings', 'Réglages', { icon: P.sliders, cls: 'cn-sec', title: 'Réglages des cours : les clés, le dossier, la longueur' })}</div>`)
+    todayEl.scrollTop = top
     bars(todayEl)
   }
   function runBlock(r) {
@@ -336,6 +361,8 @@ const IC = (() => {
     },
     pickDest: async () => { const r = await api.invoke('pickDest'); if (r) { S.settings = r.settings; S.library = r.library; render(true) } },
     goGemini: () => { S.adv = true; renderEd(true) },
+    menu: () => { S.menu = S.menu === 'engine' ? null : 'engine'; renderToday(); if (S.menu) todayEl.scrollTo({ top: todayEl.scrollHeight, behavior: 'smooth' }) }, // ouvert : la colonne descend jusqu'à lui
+    goKeys: () => { S.menu = null; S.ed = 'settings'; S.adv = true; S.pick = null; render(true) }, // la clé du moteur choisi : réglages, volet Avancé ouvert
   })
   // fromDraft : réussi, le titre du brouillon se vide pour le cours suivant (matière et type restent)
   async function launch(promise, fromDraft = false) {

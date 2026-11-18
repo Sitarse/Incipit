@@ -1,7 +1,7 @@
 # Normalise les fins de ligne dans le depot (LF), et surtout : protege les
 # fichiers qui cassent si git les convertit.
 
-* text=auto
+* text=auto eol=lf
 
 # Scripts Unix : un CRLF ici donne "bad interpreter: /bin/sh^M" au clonage
 # sous Linux ou macOS. Ils doivent rester en LF, quelle que soit la machine.

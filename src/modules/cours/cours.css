@@ -334,4 +334,29 @@
 @keyframes srglow { 50% { box-shadow: 0 10px 44px color-mix(in srgb, var(--risk) 60%, transparent) } }
 @media (prefers-reduced-motion: reduce) { .hdr-serie, .sr-fire svg, .sa-fire svg, [data-alert=serie] #notch { animation: none !important } }
 /* Réglages : en bas à gauche de la fenêtre, toujours visible (collé en bas quand la colonne défile) */
-.cn-foot { margin-top: auto; position: sticky; bottom: 0; padding-top: 12px; background: #1a1a1b }
+.cn-bottom { margin-top: auto; position: sticky; bottom: 0; padding-top: 12px; background: #1a1a1b }
+/* Le choix du moteur et du modèle, dans la colonne de gauche (cours.js : quickPicker) */
+.cn-bottom { display: flex; flex-direction: column; gap: 8px; align-items: stretch }
+.cn-bottom > .cn-sec { align-self: flex-start }
+.cn-quick-btn { display: flex; align-items: center; gap: 10px; padding: 9px 12px 9px 13px; border-radius: 14px; background: rgba(255, 255, 255, .08); text-align: left; color: var(--text) }
+.cn-quick-btn:hover { background: rgba(255, 255, 255, .13) }
+.cn-quick-btn > i { width: 8px; height: 8px; flex: none; border-radius: 50%; background: #FF8A8A }
+.cn-quick-btn > i[data-ok=true] { background: #30D158 }
+.cn-quick-btn > span { flex: 1; min-width: 0; display: flex; flex-direction: column }
+.cn-quick-btn small { font-size: 11px; color: var(--dim) }
+.cn-quick-btn b { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.cn-quick-btn svg { width: 15px; height: 15px; color: var(--dim); transition: rotate .15s var(--out) }
+.cn-quick-btn[data-on=true] svg { rotate: 180deg }
+.cn-quick { order: -1; display: grid; gap: 6px; padding: 8px; border-radius: 14px; background: rgba(255, 255, 255, .05) }
+.cn-quick h6 { margin: 2px 6px 0; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--dim) }
+.cn-quick-list { display: grid; gap: 2px; max-height: 148px; overflow-y: auto; scrollbar-width: thin }
+.cn-quick-list button { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; padding: 6px 9px; border-radius: 9px; font-size: 12.5px; text-align: left; color: var(--text-2) }
+.cn-quick-list button > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
+.cn-quick-list button:hover { background: rgba(255, 255, 255, .08) }
+.cn-quick-list button[data-on=true] { background: #E9EEEC; color: #0B0B0C; font-weight: 600 }
+.cn-quick-list small { flex: none; font-size: 11px; opacity: .6 }
+.cn-quick .cn-hint { margin: 0 6px }
+.cn-quick .cn-small { justify-self: start; margin-left: 6px }
+.cn-quick-list.all { max-height: none; overflow: visible }
+/* ouvert, le panneau défile avec la colonne au lieu de rester collé (il cacherait la série) */
+.cn-bottom:has(.cn-quick) { position: static }

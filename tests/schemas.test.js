@@ -16,7 +16,7 @@ const drawAll = (spec, label) => {
 }
 
 // 1. Le guide : chaque exemple est un schéma valide qui se dessine
-const guide = fs.readFileSync(path.join(__dirname, '..', 'src', 'modules', 'cours', 'engine', 'config', 'schemas.md'), 'utf8')
+const guide = fs.readFileSync(path.join(__dirname, '..', 'src', 'modules', 'cours', 'engine', 'config', 'schemas.md'), 'utf8').replace(/\r\n/g, '\n') // Windows peut rendre des \r\n au clonage
 const examples = [...guide.matchAll(/```schema\n([\s\S]*?)\n```/g)].map(m => S.parse(m[1]))
 assert.ok(examples.length >= 12, `exemples du guide : ${examples.length}`)
 const seen = new Set()
