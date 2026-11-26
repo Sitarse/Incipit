@@ -8,7 +8,8 @@ const path = require('node:path')
 
 const electron = require('electron') // le chemin de l'exécutable
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'incipit-smoke-'))
-const r = spawnSync(electron, [path.join(__dirname, '..')], {
+// Linux : l'interdiction du bac à sable doit venir de la ligne de commande (Chromium la lit avant le code de l'appli)
+const r = spawnSync(electron, [...(process.platform === 'linux' ? ['--no-sandbox'] : []), path.join(__dirname, '..')], {
   env: { ...process.env, INCIPIT_SMOKE: path.join(dir, 'out'), INCIPIT_DATA: path.join(dir, 'data'), INCIPIT_NO_SANDBOX: '1' },
   encoding: 'utf8', timeout: 120_000,
 })
