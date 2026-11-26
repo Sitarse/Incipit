@@ -136,7 +136,7 @@ const IC = (() => {
     const log = rightEl.querySelector('.cn-calls, .cn-logs')
     if (log && S.run?.status === 'run') log.scrollTop = log.scrollHeight
   }
-  const tools = () => `<span class="cn-tools"><button class="cn-add" data-cn="newOpen">${svg(P.plus)}Nouveau cours</button></span>`
+  const tools = () => `<span class="cn-tools"><button class="cn-add" data-cn="newOpen">${svg(P.plus)}Nouveau cours</button>${btn('importer', '', { icon: P.upload, cls: 'cn-ic', title: 'Importer un cours (.incipit)' })}</span>`
   function homeView() {
     const list = S.library.courses, groups = new Map()
     for (const c of list) (groups.get(c.matiere) ?? groups.set(c.matiere, []).get(c.matiere)).push(c)
@@ -301,8 +301,20 @@ const IC = (() => {
     }
   }
   // Des fichiers pour le prochain cours : ils vont au brouillon, et l'éditeur s'ouvre pour qu'on le voie
-  async function addFiles(files) {
-    const paths = files.map(f => typeof f === 'string' ? f : window.api.filePath(f)).filter(Boolean)
+  const pathOf = f => typeof f === 'string' ? f : window.api.filePath(f)
+  const isIncipit = f => /\.incipit$/i.test(pathOf(f) ?? '')
+  // Des cours en .incipit (faits ici ou dans Incipit) : importés, pas ajoutés aux sources
+  async function importCours(paths) {
+    const r = await api.invoke('import', paths)
+    if (r?.library) S.library = r.library
+    if (r?.error) say(r.error, true)
+    else if (r?.imported?.length) say(r.imported.length > 1 ? `${r.imported.length} cours importés.` : `« ${r.imported[0].titre} » est importé.`)
+    return r?.imported?.length ?? 0
+  }
+  async function addFiles(all) {
+    const cours = all.filter(isIncipit), files = all.filter(f => !isIncipit(f))
+    if (cours.length) await importCours(cours.map(pathOf))
+    const paths = files.map(pathOf).filter(Boolean)
     if (!paths.length) return 0
     if (!S.ed) S.ed = 'new'
     const { added } = await api.invoke('addPaths', 'draft', paths) ?? {}
@@ -315,6 +327,7 @@ const IC = (() => {
   const setDraft = (k, v) => { S.draft[k] = v; store(k, v) }
   Object.assign(actions, {
     home: () => { S.view = 'home'; S.details = null; render() },
+    importer: async () => { await importCours([]) },
     newOpen: () => { S.ed = 'new'; S.draft.link = false; render(true); edEl.querySelector('.cn-titlein:placeholder-shown')?.focus() },
     edClose: () => { S.ed = null; S.pick = null; render(true) },
     settings: () => { S.ed = 'settings'; S.pick = null; render(true) },
@@ -422,6 +435,8 @@ const IC = (() => {
     addFiles([...e.dataTransfer.files])
   })
 
+  // Un cours importé par double-clic sur un .incipit (main.js) : la liste le montre aussitôt
+  api.on('library', l => { S.library = l; render() })
   // Une génération avance (main.js) ; à la fin, l'île le dit, même panneau fermé
   api.on('run', r => {
     const was = S.run
@@ -462,6 +477,7 @@ const IC = (() => {
     takeDrop: files => {
       if (tabOf(tab) !== 'cours') return null
       addFiles(files)
+      if (files.every(isIncipit)) return { title: files.length > 1 ? `${files.length} cours à importer` : 'Un cours à importer', sub: 'Confirme dans la fenêtre qui s’ouvre' }
       return { title: `${files.length} fichier${files.length > 1 ? 's' : ''} pour ton cours`, sub: esc(dropText()) }
     },
   })

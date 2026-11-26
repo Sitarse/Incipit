@@ -98,4 +98,40 @@ assert.equal(schemas.transform(out.md, path.join(dir, 'schemas'), dir).kept, 1)
 assert.ok(fs.existsSync(path.join(dir, 'schemas', file)))
 fs.rmSync(dir, { recursive: true })
 
+// 6. La mémoire à plusieurs cadres (l'onglet Pile de l'IDE) et le mode libre
+const yOf = (svg, t) => { const m = svg.match(new RegExp(`<text [^>]*y="([\\d.]+)"[^>]*>${t.replace(/[()[\]]/g, '\\$&')}</text>`)); return m ? Number(m[1]) : null }
+const arrows = svg => (svg.match(/marker-end=/g) ?? []).length
+const css0 = (spec, o = {}) => S.render(spec, { theme: 'css', step: 0, ...o }).svg
+const cadres = { type: 'memoire', etapes: [{ cadres: [{ nom: 'main()', variables: [{ nom: 'p', vers: 'o1' }] }, { nom: 'f(int k)', variables: [{ nom: 'k', valeur: '3' }], note: '→ 49' }], objets: [{ id: 'o1', classe: 'Point', champs: [['x', '1']] }] }] }
+drawAll(cadres, 'memoire à cadres')
+const mc = css0(cadres)
+assert.ok(yOf(mc, 'f(int k)') !== null && yOf(mc, 'f(int k)') < yOf(mc, 'main()'), "l'appel en cours est dessiné au-dessus de main")
+assert.match(mc, />→ 49</, 'la note du cadre (la valeur renvoyée)')
+// versVar : une flèche de plus, vers la case d'un tableau local
+const tab = { nom: 't', champs: [0, 1, 2, 3, 4].map(i => ({ nom: `[${i}]`, valeur: String(i * 10) })) }
+const sansQ = { type: 'memoire', etapes: [{ cadres: [{ nom: 'main()', variables: [tab, { nom: 'q', valeur: '?' }] }], objets: [] }] }
+const avecQ = { type: 'memoire', etapes: [{ cadres: [{ nom: 'main()', variables: [tab, { nom: 'q', versVar: [0, 't', '2'] }] }], objets: [] }] }
+assert.equal(arrows(css0(avecQ)), arrows(css0(sansQ)) + 1, 'versVar : une flèche')
+assert.match(css0(avecQ), />\[2\]</, 'les cases du tableau local sont dans le cadre')
+// globales : une zone seulement s'il y en a
+assert.match(css0({ type: 'memoire', etapes: [{ ...cadres.etapes[0], globales: [{ nom: 'g', valeur: '7' }] }] }), />GLOBALES</)
+assert.doesNotMatch(mc, />GLOBALES</)
+// libre : les limites des cours sautent (l'IDE plafonne lui-même)
+const vingt = { type: 'memoire', etapes: [{ cadres: [{ nom: 'main()', variables: Array.from({ length: 20 }, (_, i) => ({ nom: `v${i}`, valeur: '1' })) }], objets: [] }] }
+assert.match((S.validate(vingt).errors ?? []).join(' '), /10 variables/)
+assert.ok(S.validate(vingt, { libre: true }).ok, 'libre : 20 variables')
+const quatreCents = { type: 'memoire', etapes: Array.from({ length: 400 }, () => ({ cadres: [{ nom: 'main()', variables: [] }], objets: [] })) }
+assert.ok(S.validate(quatreCents, { libre: true }).ok)
+assert.equal(S.render(quatreCents, { libre: true, theme: 'css', step: 399 }).steps, 400)
+// places stables : x garde sa ligne quand y apparaît
+const stable = { type: 'memoire', etapes: [{ cadres: [{ nom: 'main()', variables: [{ nom: 'x', valeur: '1' }] }], objets: [] },
+  { cadres: [{ nom: 'main()', variables: [{ nom: 'y', valeur: '2' }, { nom: 'x', valeur: '1' }] }], objets: [] }] }
+assert.equal(yOf(css0(stable), 'x'), yOf(css0(stable, { step: 1 }), 'x'), 'x ne saute pas')
+// l'accent reste lisible : le nom (hors de la case) en texte fort, le départ de flèche clair dans la case pleine, un champ
+// changé dans un objet qui ne l'est pas sur une pastille pleine
+const acc = css0({ type: 'memoire', etapes: [{ cadres: [{ nom: 'main()', variables: [{ nom: 'q', vers: 'o1', ton: 'accent' }] }], objets: [{ id: 'o1', classe: 'P', champs: [{ nom: 'v', valeur: '5', ton: 'accent' }] }] }] })
+assert.match(acc, /<text [^>]*class="s-t1[^"]*"[^>]*>q<\/text>/,'le nom de la variable « accent » est lisible')
+assert.match(acc, /<circle [^>]*class="s-tc-acc"/, 'le départ de la flèche se voit sur la case pleine')
+assert.equal((acc.match(/class="s-box s-b-acc"/g) ?? []).length, 2,'la case de q et la pastille du champ v')
+
 console.log(`schémas : tous les tests passent (${Object.keys(S.types).length} types, ${examples.length} exemples du guide)`)

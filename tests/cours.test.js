@@ -101,6 +101,12 @@ assert.deepEqual(lib.cleanProgress({ done: ['c-a', 'c-a', 'c-b', 3, 'x'.repeat(3
   { done: ['c-a', 'c-b'], quiz: { 'q-a': 0.8 }, at: 'c-b', total: 12, t: 5 })
 assert.deepEqual(lib.cleanProgress(null, 5), { done: [], quiz: {}, at: null, total: 0, t: 5 })
 assert.deepEqual(lib.cleanProgress({ quiz: [1, 2], total: -3, at: '' }, 5), { done: [], quiz: {}, at: null, total: 0, t: 5 })
+// Les questions à Hito sur un passage : sans passage ni réponse, retirées ; le reste borné
+assert.deepEqual(lib.cleanQuestions([{ id: 'a', chap: 'c-x', quote: 'la pile', a: 'LIFO', pos: 12, at: 3, extra: 1 }, { id: 'b', chap: 'c-x', quote: ' ', a: 'r' },
+  { id: 'c', chap: 'c-x', quote: 'q', a: '' }, null, 'x'], 5), [{ id: 'a', chap: 'c-x', titre: '', quote: 'la pile', q: '', a: 'LIFO', pos: 12, at: 3 }])
+assert.equal(lib.cleanQuestions([{ id: 'a', chap: 'c', quote: 'x'.repeat(5000), a: 'r', pos: 1.5 }], 5)[0].quote.length, 1500)
+assert.equal(lib.cleanQuestions([{ id: 'a', chap: 'c', quote: 'q', a: 'r', pos: 1.5 }], 5)[0].pos, -1)
+assert.deepEqual(lib.cleanQuestions({ id: 'a' }), [])
 // Les étapes d'une génération, en clair
 assert.deepEqual(lib.planOf('cours', { cours: true, fiche: true, cartes: true }).map(s => s[1]),
   ['Lecture des sources', 'Rédaction du cours', 'Schémas et PDF', 'Fiche et flash cards'])

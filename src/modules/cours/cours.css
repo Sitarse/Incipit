@@ -272,7 +272,7 @@
 /* « Aujourd'hui » défile si la série, les cartes et la lecture ne tiennent pas ensemble */
 .cn-today { overflow-y: auto; scrollbar-width: none }
 /* en haut à droite du panneau, avant Hito (et la musique se décale d'autant) */
-.hdr .hdr-serie { position: absolute; right: 48px; top: 50%; translate: 0 -50%; height: 30px; display: flex; align-items: center; gap: 5px; padding: 0 11px 0 8px; border-radius: 15px; background: rgba(255, 255, 255, .07); color: var(--dim); font-weight: 700; white-space: nowrap; transition: background-color .2s var(--hover) }
+.hdr .hdr-serie { position: absolute; right: calc(48px + var(--modes-w, 0px)); top: 50%; translate: 0 -50%; height: 30px; display: flex; align-items: center; gap: 5px; padding: 0 11px 0 8px; border-radius: 15px; background: rgba(255, 255, 255, .07); color: var(--dim); font-weight: 700; white-space: nowrap; transition: background-color .2s var(--hover) }
 .hdr .hdr-serie:hover { background: rgba(255, 255, 255, .12) }
 .hdr-serie svg { width: 17px; height: 17px }
 .hdr-serie b { font-size: 14px; font-variant-numeric: tabular-nums }
@@ -282,7 +282,7 @@
 .hdr-serie[data-state=done] { background: color-mix(in srgb, var(--fire) 18%, transparent); color: var(--fire) }
 .hdr-serie[data-state=done] svg { fill: var(--fire); stroke: var(--fire-2) }
 .hdr-serie[data-state=risk] { background: color-mix(in srgb, var(--risk) 22%, transparent); color: var(--risk); box-shadow: inset 0 0 0 1.5px var(--risk); animation: srpulse 1.6s ease-in-out infinite }
-#zone .hdr .eq { right: calc(50px + var(--serie-w, 0px)) }
+#zone .hdr .eq { right: calc(50px + var(--modes-w, 0px) + var(--serie-w, 0px)) }
 @keyframes srpulse { 50% { box-shadow: inset 0 0 0 1.5px var(--risk), 0 0 0 5px transparent, 0 0 18px color-mix(in srgb, var(--risk) 55%, transparent) } }
 /* la carte, en tête d'« Aujourd'hui » */
 .sr { padding: 14px 16px 12px }

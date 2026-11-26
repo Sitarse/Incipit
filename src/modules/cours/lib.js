@@ -210,6 +210,14 @@ function cleanProgress(d, now = Date.now()) {
   return { done: [...new Set(Array.isArray(d?.done) ? d.done.filter(id) : [])].slice(0, 500), quiz, at: id(d?.at) ? d.at : null,
     total: Number.isInteger(d?.total) && d.total >= 0 && d.total < 10000 ? d.total : 0, t: now }
 }
+// Les questions posées au tuteur sur un passage du site (lecteur-questions.js) : le passage, la question, la réponse, le
+// chapitre ; sans passage ni réponse, rien. Gardées par lecteur.js dans lecteur-questions.json (les 500 dernières par cours)
+function cleanQuestions(list, now = Date.now()) {
+  const s = (v, n) => (typeof v === 'string' ? v.slice(0, n) : '')
+  return (Array.isArray(list) ? list : []).filter(x => x && s(x.id, 40) && s(x.chap, 200) && s(x.quote, 1500).trim() && s(x.a, 20000).trim()).slice(-500)
+    .map(x => ({ id: s(x.id, 40), chap: s(x.chap, 200), titre: s(x.titre, 300), quote: s(x.quote, 1500), q: s(x.q, 1500), a: s(x.a, 20000),
+      pos: Number.isInteger(x.pos) && x.pos >= -1 ? x.pos : -1, at: Number.isFinite(x.at) ? x.at : now }))
+}
 // Les étapes d'une génération, dites simplement (le panneau les coche une à une) : [clé, libellé]
 // kind : cours | supports | reecrire ; o : les options de la génération
 function planOf(kind, o = {}) {
@@ -220,7 +228,7 @@ function planOf(kind, o = {}) {
   return [['lecture', 'Lecture des sources'], o.cours && ['ecrit', 'Rédaction du cours'], o.cours && ['pdf', 'Schémas et PDF'],
     o.sujet && ['sujet', 'Sujet retravaillé'], sup.length && ['supports', supLabel]].filter(Boolean)
 }
-// Le skill « cours » (%APPDATA%\Hitodama\skills\cours.md) : son modèle -> le moteur, ses « Consignes en plus » -> le texte
+// Le skill « cours » (Hitodama) : son modèle -> le moteur, ses « Consignes en plus » -> le texte
 // ajouté à la méthode (commentaires HTML retirés : ils expliquent, ils ne commandent pas)
 const engineOfSkill = mode => (mode === 'nim' ? 'gratuit' : 'claude-cli')
 function consignesOf(body) {
@@ -357,5 +365,5 @@ module.exports = {
   isInside, freeName, kindOf, linkFile, frontmatter, sectionsOf, words, parseLine, accents,
   review, isDue, waitLabel, cardId, startOfDay, normalize, checkCalcul, checkKeywords, tpScore, testScript, testResult,
   validSetting, jobOptions, byPreference,
-  CAPS, notionId, layersOf, notionsOf, countedWords, formatOf, planFor, planOf, cleanProgress, engineOfSkill, consignesOf, GRADE_SCORE, evidence,
+  CAPS, notionId, layersOf, notionsOf, countedWords, formatOf, planFor, planOf, cleanProgress, cleanQuestions, engineOfSkill, consignesOf, GRADE_SCORE, evidence,
 }

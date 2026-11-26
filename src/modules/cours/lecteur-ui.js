@@ -34,7 +34,7 @@ function setSide(k) {
   $('#app').classList.toggle('drawer', on); $('#side').hidden = !on
   $$('.side-tabs [data-side]').forEach(b => b.classList.toggle('on', b.dataset.side === k))
   $$('#rail [data-rail]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.rail === k)))
-  $('#sideSrc').hidden = k !== 'src'; $('#sideHito').hidden = k !== 'hito'
+  $('#sideSrc').hidden = k !== 'src'; $('#sideHito').hidden = k !== 'hito'; $('#sideQs').hidden = k !== 'qs'
 }
 S.side = read('drawer', null)
 $('.side-tabs').onclick = e => { const b = e.target.closest('[data-side]'); if (b) setSide(b.dataset.side) }
@@ -86,7 +86,8 @@ $('#tocList').addEventListener('click', e => {
 })
 
 // ---------- Un cours : ses parties, ses chapitres, ses quiz, de quoi réviser ----------
-async function openCourse(p, at) {
+// chap : le titre d'un chapitre à ouvrir (un lien d'une carte de Hito) ; le plus proche de ce titre, sinon là où tu en étais
+async function openCourse(p, at, chap) {
   const where = findCourse(p)
   closePane(true); chapEl.hidden = true
   $('#empty').hidden = false; $('#empty').textContent = 'Préparation du cours… (la première fois, quelques secondes)'
@@ -101,8 +102,17 @@ async function openCourse(p, at) {
   setCrumbs(S.cur.titre)
   $('#pdfBtn').hidden = !S.cur.info.pdf; $('#prog').hidden = false; $('#empty').hidden = true
   $('#rail').hidden = false; $('#tocLab').textContent = 'Mon parcours'; setSide(S.side)
-  const i = S.items.findIndex(x => x.id === (at ?? S.prog.at))
+  let i = S.items.findIndex(x => x.id === (at ?? S.prog.at))
+  if (chap) { const j = closestItem(chap); if (j >= 0) i = j }
   go(i >= 0 ? i : 0)
+}
+// Le chapitre dont le titre ressemble le plus à `chap` (mots communs, accents et casse ignorés), ou -1
+function closestItem(chap) {
+  const words = s => new Set(String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 2))
+  const want = words(chap)
+  let best = -1, score = 0
+  S.items.forEach((it, k) => { if (it.kind !== 'chap') return; const n = [...words(it.title)].filter(w => want.has(w)).length; if (n > score) { best = k; score = n } })
+  return best
 }
 // Le HTML du cours, coupé à ses titres : ## une partie, ### un chapitre ; sans ###, chaque ## est un chapitre
 function buildItems(d) {
@@ -183,7 +193,7 @@ function go(i) {
   const it = S.items[i]
   if (!it) return
   S.at = i; S.prog.at = it.id; saveProg()
-  renderToc(); renderProgress(); renderSide(it)
+  renderToc(); renderProgress(); renderSide(it); qsSide(it) // qsSide : lecteur-questions.js
   setCrumbs(S.cur.titre, ...crumbOf(it))
   $('#railQuiz').disabled = !quizOf(it) || it.kind === 'quiz'
   if (it.pane) { chapEl.hidden = true; $('#foot').hidden = true; showPane(it.pane, it) } else renderChapter(it)
@@ -208,7 +218,7 @@ function renderChapter(it) {
   drawSchemas(body, S.cur.schemas ?? {})
   codeBlocks(body)
   vocabDecorate(body) // lecteur-vocab.js : le vocabulaire en vert
-  enrich(body)
+  enrich(body).then(() => qsPaint(body, it)) // lecteur-questions.js : les passages déjà questionnés, surlignés
   paintFoot(it)
 }
 function welcome() {
@@ -219,7 +229,7 @@ function welcome() {
     <div class="facts">${fact(parts, parts > 1 ? 'parties' : 'partie')}${fact(ch, ch > 1 ? 'chapitres' : 'chapitre')}${fact(qz, 'quiz')}${fact(slides, 'diapos du prof')}${fact(S.cards.length, 'flash cards')}</div>
     <ol><li>Lis un chapitre, puis clique « Chapitre suivant » en bas : il se coche dans le parcours et le suivant s’ouvre.</li>
       <li>${qz ? 'Chaque partie se termine par un quiz corrigé : il valide la partie.' : 'Crée le TP noté (en bas du parcours) : chaque partie aura son quiz.'}</li>
-      <li>À droite, la barre flottante ouvre les sources du chapitre (diapos du prof, tes notes, tes liens, des vidéos et des sites pour aller plus loin) ou le tuteur : surligne un passage pour lui poser une question.</li>
+      <li>À droite, la barre flottante ouvre les sources du chapitre (diapos du prof, tes notes, tes liens, des vidéos et des sites pour aller plus loin) ou le tuteur : surligne un passage pour lui poser une question ; le passage reste surligné et sa réponse se retrouve dans « Questions ».</li>
       <li>Pour réviser : la fiche, les flash cards et le TP, en bas du parcours.</li></ol></section>`
 }
 chapEl.addEventListener('click', async e => {
@@ -412,11 +422,12 @@ function md(src) {
 }
 const msgs = $('#hMsgs')
 const toBottom = () => { msgs.scrollTop = msgs.scrollHeight }
-let waiting = null
+let waiting = null, waitNote = null
 const mineIds = new Map()
-function ask(q, quote = '') {
+function ask(q, quote = '', range = null) {
   const it = S.items[S.at]
   if (!S.cur || !it || waiting) return
+  waitNote = quote ? qsDraft(quote, range, it) : null // gardée avec la réponse, dans « Questions » (lecteur-questions.js)
   setSide('hito')
   const text = ($('#body') ?? $('#pane'))?.innerText ?? ''
   const ctx = { module: { name: 'Cours', text: `Site du cours : ${S.cur.matiere} · ${S.cur.type} ${S.cur.titre}\nPage ouverte : ${it.title}\n${quote ? 'Passage surligné par l’étudiant' : 'Texte de la page'} :\n${quote || text}`.slice(0, 3000) } }
@@ -430,7 +441,7 @@ L.onHito(d => {
   if (d.type === 'start' && waiting && d.text === waiting) {
     waiting = null
     msgs.insertAdjacentHTML('beforeend', '<div class="m hi"><span class="st">Le tuteur réfléchit…</span></div>')
-    mineIds.set(d.id, { el: msgs.lastElementChild, text: '' })
+    mineIds.set(d.id, { el: msgs.lastElementChild, text: '', note: waitNote })
     return toBottom()
   }
   const m = mineIds.get(d.id)
@@ -441,7 +452,7 @@ L.onHito(d => {
     mineIds.delete(d.id)
     if (d.cancelled) m.el.innerHTML = '<span class="st">Arrêté.</span>'
     else if (d.error) { m.el.classList.add('err'); m.el.textContent = d.error }
-    else m.el.innerHTML = md(d.text || m.text)
+    else { m.el.innerHTML = md(d.text || m.text); qsSave(m.note, d.text || m.text) }
   } else return
   toBottom()
 })
@@ -456,24 +467,24 @@ box.addEventListener('keydown', e => {
 })
 // surligner un passage : « Demander au tuteur »
 const pop = $('#selpop')
-let selText = ''
+let selText = '', selRange = null
 document.addEventListener('mouseup', e => {
   if (e.target.closest('#selpop')) return
   const sel = getSelection(), t = sel?.toString().trim() ?? ''
   if (t.length < 3 || !sel.anchorNode || !main.contains(sel.anchorNode)) { pop.hidden = true; return }
   const r = sel.getRangeAt(0).getBoundingClientRect()
-  selText = t.slice(0, 1500)
+  selText = t.slice(0, 1500); selRange = sel.getRangeAt(0).cloneRange()
   Object.assign(pop.style, { left: `${r.left + r.width / 2}px`, top: `${r.top - 8}px` })
   pop.hidden = false
 })
-$('#selAsk').onclick = () => { pop.hidden = true; ask('Explique-moi ce passage.', selText); getSelection()?.removeAllRanges() }
+$('#selAsk').onclick = () => { pop.hidden = true; ask('Explique-moi ce passage.', selText, selRange); getSelection()?.removeAllRanges() }
 main.addEventListener('scroll', () => { pop.hidden = true }, { passive: true })
 
 // ---------- départ : une fois lecteur-plus.js chargé aussi (il fait les quiz, la fiche, les cartes…) ----------
-L.onOpen(p => openCourse(p))
+L.onOpen((p, chap) => openCourse(p, undefined, chap))
 addEventListener('DOMContentLoaded', async () => {
   const st = await L.call('start')
   S.shelf = st?.shelf ?? []; S.vendor = st?.vendor ?? null
   const p = st?.course
-  if (p && findCourse(p)) openCourse(p); else showHome()
+  if (p && findCourse(p)) openCourse(p, undefined, st.chap); else showHome()
 })

@@ -6,7 +6,7 @@ Un schéma s'écrit dans un bloc ```schema contenant un seul objet JSON valide (
 
 Le bon type :
 - pile : une pile qui se remplit et se vide (appels de fonctions, récursion, objets construits puis détruits, LIFO). Cadres du bas vers le haut.
-- memoire : variables (pile) et objets (tas) reliés par des flèches de référence : affectation, alias, `==` contre `equals`, `null`, liste chaînée.
+- memoire : variables (pile) et objets (tas) reliés par des flèches de référence : affectation, alias, `==` contre `equals`, `null`, liste chaînée. Plusieurs appels à la fois : "cadres" (du bas, main, vers le haut), chacun avec ses variables ; un pointeur vers une autre variable de la pile : "versVar":[n° du cadre, nom, case] ; un tableau ou une struct posés dans la pile : "champs" ; "globales" pour les variables globales et static.
 - zones : une architecture ou un mécanisme : des zones titrées (navigateur, serveur, moteur, file d'attente) qui contiennent des éléments, et ce qui passe de l'un à l'autre.
 - arbre : une hiérarchie (héritage, arborescence de fichiers, DOM, composants).
 - sequence : qui envoie quoi à qui, dans l'ordre (requête HTTP, appels entre objets, protocole).
@@ -30,6 +30,10 @@ La forme de chaque type (les remarques entre parenthèses donnent les autres cha
 
 ```schema
 {"type":"memoire","zones":["Pile","Tas"],"etapes":[{"variables":[{"nom":"a","vers":"o1"},{"nom":"b","vers":"o2"}],"objets":[{"id":"o1","classe":"Point","champs":[["x","1"]]},{"id":"o2","classe":"Point","champs":[["x","1"]]}],"legende":"deux objets égaux mais distincts"},{"variables":[{"nom":"a","vers":"o1"},{"nom":"b","vers":"o1","ton":"accent"},{"nom":"n","valeur":"3"}],"objets":[{"id":"o1","classe":"Point","champs":[["x","1"]]},{"id":"o2","classe":"Point","champs":[["x","1"]],"ton":"discret"}],"legende":"b = a : un seul objet, deux flèches"}]}
+```
+
+```schema
+{"type":"memoire","etapes":[{"cadres":[{"nom":"main()","variables":[{"nom":"t","champs":[{"nom":"[0]","valeur":"4"},{"nom":"[1]","valeur":"7"}]},{"nom":"p","vers":"o1"}]}],"objets":[{"id":"o1","classe":"Point","champs":[["x","1"]]}],"legende":"main a un tableau dans la pile et un Point dans le tas"},{"cadres":[{"nom":"main()","variables":[{"nom":"t","champs":[{"nom":"[0]","valeur":"4"},{"nom":"[1]","valeur":"7"}]},{"nom":"p","vers":"o1"}]},{"nom":"deplacer(Point *q, int *n)","ton":"accent","variables":[{"nom":"q","vers":"o1"},{"nom":"n","versVar":[0,"t","1"]}]}],"objets":[{"id":"o1","classe":"Point","champs":[["x","1"]]}],"legende":"deplacer reçoit l'adresse du Point et celle de t[1]"}]}
 ```
 
 ```schema

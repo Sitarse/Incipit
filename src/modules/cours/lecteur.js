@@ -5,28 +5,31 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { VIEWERS } = require('../../ai/companion')
 const { specsOf } = require('./schemas-cours')
-const { cleanProgress } = require('./lib')
+const { cleanProgress, cleanQuestions } = require('./lib')
 const IDE = require('./ide')
 const { LANGS: IDE_LANGS } = require('./ide-langs')
 
 // Le lecteur de cours : une grande fenêtre (lecteur.html) qui lit tes cours écrits, chaque partie avec ses diapos
-// à côté, et Hito sur le passage lu. engine/lecteur.py prépare un cours (texte rendu, parties, sources de chacune) ;
+// à côté, et le tuteur sur le passage lu. engine/lecteur.py prépare un cours (texte rendu, parties, sources de chacune) ;
 // le résultat est gardé dans DATA/lecteur tant que le cours et le script ne changent pas.
 // ctx : engine, uvPath, engineEnv, data, library, courseAt, companions (main.js)
 module.exports = ctx => {
   const CACHE = path.join(ctx.data, 'lecteur'), SCRIPT = path.join(ctx.engine, 'lecteur.py')
   // La progression dans chaque cours (lecteur-progression.json) : un enregistrement par cours, vérifié avant d'être gardé
   const PROGRESS = path.join(ctx.data, 'lecteur-progression.json')
+  // Les questions posées au tuteur sur un passage, avec sa réponse (lecteur-questions.js) : une liste par cours
+  const QUESTIONS = path.join(ctx.data, 'lecteur-questions.json')
   // Le temps d'étude, par jour (lecteur-stats.js l'affiche) : 30 s à chaque signe du site, pas plus d'un toutes les 25 s
   const ACTIVITY = path.join(ctx.data, 'lecteur-activite.json')
   let lastTick = 0
-  const readProgress = () => { try { const v = JSON.parse(fs.readFileSync(PROGRESS, 'utf8')); return v && typeof v === 'object' ? v : {} } catch { return {} } }
-  function writeProgress(all) {
+  const readAll = f => { try { const v = JSON.parse(fs.readFileSync(f, 'utf8')); return v && typeof v === 'object' ? v : {} } catch { return {} } }
+  const readProgress = () => readAll(PROGRESS)
+  function writeAll(f, all) {
     fs.mkdirSync(ctx.data, { recursive: true })
-    fs.writeFileSync(`${PROGRESS}.tmp`, JSON.stringify(all))
-    fs.renameSync(`${PROGRESS}.tmp`, PROGRESS)
+    fs.writeFileSync(`${f}.tmp`, JSON.stringify(all))
+    fs.renameSync(`${f}.tmp`, f)
   }
-  let win = null, wanted = null
+  let win = null, wanted = null, wantedChap = null
   // L'IDE des cours (ide.js) : la console et le pas à pas, montrés dans cette fenêtre
   const ide = IDE({ data: ctx.data, push: ev => { if (win && !win.isDestroyed()) win.webContents.send('lecteur-ide', ev) } })
   // « Pour aller plus loin » : des vidéos et des pages web pour un chapitre, cherchées à la demande (ressources.js)
@@ -68,7 +71,7 @@ module.exports = ctx => {
   const mine = e => win && !win.isDestroyed() && e.sender === win.webContents
   ipcMain.handle('lecteur', async (e, op, arg) => {
     if (!mine(e)) return null
-    if (op === 'start') { const w = wanted; wanted = null; return { shelf: shelf(), course: w, vendor: ctx.vendor() } }
+    if (op === 'start') { const w = wanted, c = wantedChap; wanted = wantedChap = null; return { shelf: shelf(), course: w, chap: c, vendor: ctx.vendor() } }
     if (op === 'shelf') return shelf()
     if (op === 'course') {
       const course = ctx.courseAt(arg)
@@ -108,8 +111,10 @@ module.exports = ctx => {
       if (a.op === 'stop') return ide.stop()
       if (a.op === 'input') return typeof a.text === 'string' && ide.input(a.text)
       if (a.op === 'install' && ok) return ide.install(a.lang)
+      if (a.op === 'installdbg') return ide.installDbg()
       if ((a.op === 'run' || a.op === 'trace') && ok && code !== null) {
-        try { return await (a.op === 'run' ? ide.run({ lang: a.lang, code }) : ide.trace({ lang: a.lang, code, stdin: typeof a.stdin === 'string' ? a.stdin : '' })) }
+        // files : les autres fichiers d'un exemple C/C++ (Purse.h…), vérifiés par ide.js (cleanFiles)
+        try { return await (a.op === 'run' ? ide.run({ lang: a.lang, code, files: a.files }) : ide.trace({ lang: a.lang, code, files: a.files, stdin: typeof a.stdin === 'string' ? a.stdin : '' })) }
         catch (err) { console.error('IDE :', err); return { error: err.message } }
       }
       return null
@@ -121,7 +126,16 @@ module.exports = ctx => {
       const all = readProgress()
       if (arg.data === undefined) return all[course] ?? null
       all[course] = cleanProgress(arg.data)
-      writeProgress(all)
+      writeAll(PROGRESS, all)
+      return true
+    }
+    if (op === 'questions') {
+      const course = ctx.courseAt(arg?.path)
+      if (!course) return null
+      const all = readAll(QUESTIONS)
+      if (arg.data === undefined) return Array.isArray(all[course]) ? all[course] : []
+      all[course] = cleanQuestions(arg.data)
+      writeAll(QUESTIONS, all)
       return true
     }
     if (op === 'tick') {
@@ -153,13 +167,14 @@ module.exports = ctx => {
   // La génération en cours, montrée aussi dans le site (une partie réécrite, un support créé)
   const push = (c, v) => { if (win && !win.isDestroyed()) win.webContents.send(`lecteur-${c}`, v) }
 
-  function open(course) {
+  // chap : le titre du chapitre où ouvrir (une source citée), sinon là où tu en étais
+  function open(course, chap = null) {
     if (win && !win.isDestroyed()) {
-      win.webContents.send('lecteur-open', course)
+      win.webContents.send('lecteur-open', course, chap)
       if (win.isMinimized()) win.restore()
       return win.show(), win.focus(), true
     }
-    wanted = course
+    wanted = course; wantedChap = chap
     win = new BrowserWindow({ width: 1600, height: 1000, minWidth: 1100, minHeight: 700, show: false, backgroundColor: '#111110',
       title: 'Cours', icon: path.join(__dirname, '..', '..', '..', 'assets', process.platform === 'win32' ? 'icon.ico' : 'logo.png'), autoHideMenuBar: true,
       webPreferences: { preload: path.join(__dirname, 'lecteur-preload.js') } })
@@ -174,7 +189,8 @@ module.exports = ctx => {
     return true
   }
 
-  return { open, push }
+  // res : la recherche de vidéos et de pages ; ide : l'IDE du site
+  return { open, push, res }
 }
 // Les canaux du module que le site peut appeler (jamais les réglages ni les clés)
 const SITE = new Set(['course', 'sources', 'pickFiles', 'addLink', 'removeSource', 'generate', 'rewrite', 'cancel', 'dismiss', 'open',

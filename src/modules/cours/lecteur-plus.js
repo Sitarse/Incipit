@@ -74,7 +74,7 @@ const LOAD = {
     const files = await L.mod('sources', { course: S.cur.path }) ?? [], c = S.cur.info ?? {}, busy = RUN?.status === 'run'
     const KIND = { photo: 'photo', pdf: 'PDF', lien: 'lien', texte: 'texte' }
     paint(pnHead('Pour réviser', 'Sources et régénérer', [S.cur.matiere, S.cur.type].filter(Boolean).map(esc).join(' · '))
-      + `<div class="pn-acts">${c.pdf ? pnBtn('open', 'Ouvrir le PDF', { data: 'data-what="pdf"' }) : ''}${pnBtn('open', 'Ouvrir dans Obsidian', { data: 'data-what="obsidian"' })}${pnBtn('open', 'Afficher le dossier', { data: 'data-what="folder"' })}</div>
+      + `<div class="pn-acts">${c.pdf ? pnBtn('open', 'Ouvrir le PDF', { data: 'data-what="pdf"' }) : ''}${pnBtn('open', 'Ouvrir dans Obsidian', { data: 'data-what="obsidian"' })}${pnBtn('open', 'Afficher le dossier', { data: 'data-what="folder"' })}${pnBtn('open', 'Exporter (.incipit)', { data: 'data-what="export"' })}</div>
       <h2 class="pn-h2">Sources <span>${files.length}</span></h2>
       <div class="pn-files">${files.map(f => `<div class="pn-file"><span><b>${esc(f.kind === 'lien' && f.url ? f.url : f.name)}</b><small>${KIND[f.kind] ?? f.kind}${f.warn ? ` · ${esc(f.warn)}` : ''}</small></span>${pnBtn('rmSource', 'Retirer', { data: `data-name="${esc(f.name)}"` })}</div>`).join('') || '<p class="pn-muted">Aucune source gardée pour ce cours.</p>'}</div>
       <div class="pn-acts">${pnBtn('addFiles', 'Ajouter des fichiers…')}<form class="pn-link" id="pnLink"><input placeholder="https://… une page à ajouter aux sources" aria-label="Lien" spellcheck="false"><button class="pn-btn" type="submit">Ajouter le lien</button></form></div>

@@ -5,6 +5,7 @@ const os = require('node:os')
 const path = require('node:path')
 const { pathToFileURL } = require('node:url')
 const lib = require('./lib')
+const partage = require('./partage')
 const startRunner = require('./runner')
 const startVendor = require('./vendor')
 const usage = require('../../app/usage')
@@ -19,8 +20,9 @@ const skills = require('../../ai/skills')
 // Python ne lit pas dans l'archive asar de la version installée : le moteur y est désarchivé (package.json → asarUnpack)
 const ENGINE = path.join(__dirname, 'engine').replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`)
 const platform = require('../../app/platform')
-// Claude Code et uv selon le système (app/platform.js) : uv, d'abord celui livré avec l'appli (resources/uv)
-const CLAUDE = platform.findClaude()
+// Claude Code et uv selon le système (app/platform.js) : uv, d'abord celui livré avec l'appli (resources/uv).
+// Claude Code est cherché à chaque usage : il se met à jour tout seul et remplace son binaire (absent quelques secondes)
+const claudeBin = () => platform.findClaude()
 const MAX_FILE = 300 * 1024 * 1024
 const findUv = () => platform.findUv()
 const readJson = (p, fallback) => { try { return JSON.parse(fs.readFileSync(p, 'utf8')) } catch { return fallback } }
@@ -54,7 +56,7 @@ module.exports = ({ handle: register, send, configPath, readConfig, win }) => {
     const c = cfg(), noUv = uvPath() ? null : `uv est introuvable : installe-le (${platform.uvInstallHint()}), puis relance Incipit.`
     if (destMissing()) return Object.fromEntries(Object.keys(lib.MOTEURS).map(k => [k, `Le dossier de tes cours est introuvable : ${dest()}.`]))
     return {
-      'claude-cli': noUv ?? (CLAUDE ? null : 'Claude Code est introuvable sur ce PC.'),
+      'claude-cli': noUv ?? (claudeBin() ? null : 'Claude Code est introuvable sur ce PC.'),
       gratuit: noUv ?? (c.cours?.nimKey ? null : c.cours?.nimKey === null ? 'Ta clé NVIDIA est illisible : recolle-la.' : 'Ajoute ta clé NVIDIA (gratuite) dans les réglages du module.'),
       gemini: noUv ?? (c.ai?.key ? null : 'Ajoute ta clé Gemini dans les réglages des cours (Avancé).'),
       anthropic: noUv ?? keyProblem(c.cours?.anthropicKey, 'Anthropic (console.anthropic.com)'),
@@ -63,7 +65,7 @@ module.exports = ({ handle: register, send, configPath, readConfig, win }) => {
       openrouter: noUv ?? keyProblem(c.cours?.openrouterKey, 'OpenRouter (openrouter.ai/keys)'),
     }
   }
-  // Le skill « cours » de Hito (skills.js) : c'est lui qui dit qui écrit (Opus ou NIM) et ce qu'on ajoute à la méthode.
+  // Le skill « cours » (skills.js ; Hitodama en a, Incipit seul n'en a pas) : c'est lui qui dit qui écrit (Opus ou NIM) et ce qu'on ajoute à la méthode.
   // Effacé par l'utilisateur : le réglage du module reprend la main, comme avant.
   function skillCours() {
     try {
@@ -71,7 +73,7 @@ module.exports = ({ handle: register, send, configPath, readConfig, win }) => {
       return k?.run === 'cours' ? { moteur: lib.engineOfSkill(k.mode), consignes: lib.consignesOf(k.body) } : null
     } catch (err) { console.error('Cours (skill) :', err.message); return null }
   }
-  const engine = () => skillCours()?.moteur ?? (opts().moteur in lib.MOTEURS ? opts().moteur : CLAUDE ? 'claude-cli' : opts().nimKey ? 'gratuit' : 'claude-cli')
+  const engine = () => skillCours()?.moteur ?? (opts().moteur in lib.MOTEURS ? opts().moteur : claudeBin() ? 'claude-cli' : opts().nimKey ? 'gratuit' : 'claude-cli')
   function settingsView() {
     const o = opts(), pb = problems(), c = cfg()
     return {
@@ -88,7 +90,7 @@ module.exports = ({ handle: register, send, configPath, readConfig, win }) => {
       openrouterModel: o.openrouterModel || lib.MODELE_PAR_DEFAUT.openrouter, openrouterModels: lib.PREFERENCE_OPENROUTER,
       transcripteur: o.transcripteur || 'auto', transcripteurs: lib.TRANSCRIPTEURS,
       longueur: o.longueur in lib.LONGUEURS ? o.longueur : 'normal', format: o.format === '2' ? '2' : '1', langue: o.langue in lib.LANGUES ? o.langue : 'fr',
-      destination: dest(), destinationMissing: destMissing(), uv: uvPath(), claude: CLAUDE, vendor: vendor.ready(),
+      destination: dest(), destinationMissing: destMissing(), uv: uvPath(), claude: claudeBin(), vendor: vendor.ready(),
       obsidian: obsidianInstalled(), obsidianVault: !!obsidianVault(dest()),
     }
   }
@@ -102,7 +104,7 @@ module.exports = ({ handle: register, send, configPath, readConfig, win }) => {
     put('NIM_MODELE', o.nimModel); put('GEMINI_MODELE', o.geminiModel)
     put('GEMINI_PAID_API_KEY', o.geminiProKey); put('GEMINI_PRO_MODELE', o.geminiProModel); put('ANTHROPIC_API_KEY', o.anthropicKey); put('OPENAI_API_KEY', o.openaiKey); put('OPENROUTER_API_KEY', o.openrouterKey)
     put('ANTHROPIC_MODELE', o.anthropicModel); put('OPENAI_MODELE', o.openaiModel); put('OPENROUTER_MODELE', o.openrouterModel); put('CLAUDE_MODELE', o.claudeModel)
-    put('TRANSCRIPTEUR', o.transcripteur); put('CLAUDE', CLAUDE); put('VENDOR', vendor.ready() ? path.join(DATA, 'vendor') : null)
+    put('TRANSCRIPTEUR', o.transcripteur); put('CLAUDE', claudeBin()); put('VENDOR', vendor.ready() ? path.join(DATA, 'vendor') : null)
     put('CONSIGNES', skillCours()?.consignes)
     return env
   }
@@ -256,9 +258,10 @@ module.exports = ({ handle: register, send, configPath, readConfig, win }) => {
   setTimeout(vendor.ensure, 60e3)
 
   // Le lecteur : une grande fenêtre pour lire un cours, ses diapos à côté (lecteur.js)
-  lecteur = require('./lecteur')({ engine: ENGINE, uvPath, engineEnv, data: DATA, library, courseAt, companions: lib.companions, claude: CLAUDE, serie,
+  lecteur = require('./lecteur')({ engine: ENGINE, uvPath, engineEnv, data: DATA, library, courseAt, companions: lib.companions, claude: claudeBin, serie,
     call: (channel, ...args) => handlers[channel]?.(...args),
     vendor: () => vendor.ready() ? pathToFileURL(path.join(DATA, 'vendor')).href : null })
+
 
   // ---------- Canaux du panneau (window.api.mod('cours')) ----------
 
@@ -394,6 +397,7 @@ module.exports = ({ handle: register, send, configPath, readConfig, win }) => {
     const c = lib.companions(course)
     if (what === 'folder') { shell.showItemInFolder(course); return true }
     if (what === 'lire') return lecteur.open(course)
+    if (what === 'export') return exportIncipit(course)
     if (what === 'obsidian') {
       ensureVault(dest())
       if (!obsidianVault(course)) return { hint: `Obsidian ne connaît pas encore ce dossier : dans Obsidian, « Ouvrir un dossier comme coffre », choisis ${dest()}, puis réessaie.` }
@@ -403,6 +407,60 @@ module.exports = ({ handle: register, send, configPath, readConfig, win }) => {
     return f && fs.existsSync(f) ? openPath(f) : false
   })
 
+  // ---------- Partage : un cours en un fichier .incipit (partage.js), que Incipit lit et écrit aussi ----------
+
+  async function exportIncipit(course) {
+    const who = lib.identity(dest(), course)
+    const r = await dialog.showSaveDialog({ title: `Exporter « ${who.titre} »`, filters: [{ name: 'Cours Incipit', extensions: ['incipit'] }],
+      defaultPath: path.join(app.getPath('downloads'), `${who.type} - ${who.titre}${partage.EXT}`) })
+    if (r.canceled || !r.filePath) return true
+    try { fs.writeFileSync(r.filePath, partage.pack(course, who, app.getName().toLowerCase())) } catch (err) {
+      console.error('Export .incipit :', err)
+      return { hint: err.code ? 'L’export a échoué : le fichier n’a pas pu être écrit.' : err.message }
+    }
+    shell.showItemInFolder(r.filePath)
+    return true
+  }
+  // Les .incipit de cette liste : lus, montrés (ce qu'ils contiennent, et si un cours du même nom serait remplacé), puis
+  // posés dans le dossier des cours si tu confirmes. -> { imported: [{ path, titre }], error }
+  async function importIncipit(files) {
+    const imported = []
+    for (const file of files.filter(partage.isIncipit)) {
+      try {
+        if (destMissing()) throw new Error(`Le dossier de tes cours est introuvable : ${dest()}.`)
+        if (!fs.statSync(file).isFile() || fs.statSync(file).size > MAX_FILE) throw new Error('Fichier introuvable ou trop gros.')
+        const un = partage.unpack(fs.readFileSync(file)), there = partage.existing(dest(), un.who), go = there ? 'Remplacer' : 'Importer'
+        const detail = [there && 'Ce cours existe déjà chez toi : il sera remplacé.',
+          un.tp && 'Il contient un TP dont le code s’exécute sur ton PC : n’importe que des cours de gens en qui tu as confiance.'].filter(Boolean).join('\n\n')
+        const ask = await dialog.showMessageBox({ type: 'question', title: 'Importer un cours', noLink: true, buttons: [go, 'Annuler'], defaultId: 1, cancelId: 1,
+          message: `${go} « ${un.who.type} - ${un.who.titre} » (${un.who.matiere}) ?`, detail: detail || undefined })
+        if (ask.response !== 0) continue
+        const out = partage.install(dest(), un, !!there)
+        imported.push({ path: out.course, titre: un.who.titre })
+      } catch (err) {
+        console.error('Import .incipit :', err)
+        return { imported, error: err.code ? 'L’import a échoué : fichier illisible ou dossier fermé.' : err.message }
+      }
+    }
+    if (imported.length) send('library', library())
+    return { imported }
+  }
+  handle('import', async paths => {
+    let files = Array.isArray(paths) ? paths.filter(p => typeof p === 'string') : []
+    if (!files.length) {
+      const r = await dialog.showOpenDialog({ title: 'Importer un cours', filters: [{ name: 'Cours Incipit', extensions: ['incipit'] }], properties: ['openFile', 'multiSelections'] })
+      if (r.canceled) return { imported: [] }
+      files = r.filePaths
+    }
+    return { ...await importIncipit(files), library: library() }
+  })
+  // Un .incipit de la ligne de commande (double-clic : l'Explorateur lance l'appli avec son chemin) : importé, puis le cours
+  // s'ouvre dans le site ; rend s'il y en avait un
+  const openArgs = argv => {
+    const files = argv.filter(partage.isIncipit).map(f => path.resolve(f))
+    if (files.length) importIncipit(files).then(r => { if (r.imported[0]) lecteur.open(r.imported[0].path) })
+    return files.length > 0
+  }
   // ---------- TP : les exercices du cours, corrigés ici ----------
 
   const exercisesOf = course => { const l = course && readJson(lib.companions(course).exercices, null); return Array.isArray(l) ? l : null }
@@ -479,6 +537,6 @@ module.exports = ({ handle: register, send, configPath, readConfig, win }) => {
   })
 
   win.webContents.on('did-finish-load', () => runner.publish(true))
-  // Pour le reste de l'appli : ce qui tourne
-  return { status: () => runner.view() }
+  // Pour le reste de l'appli : ce qui tourne, et l'ouverture d'un .incipit (main.js)
+  return { status: () => runner.view(), partage: { openArgs } }
 }

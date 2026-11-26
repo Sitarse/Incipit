@@ -193,6 +193,14 @@ FOND_MINI, FOND_MAXI = 0.02, 0.90   # part de page : en dessous une puce, au-des
 SURFACE_FIGURE = 0.03               # une figure couvre au moins ca, une fois le decor retire
 TRACES_FIGURE = 5                   # ou alors elle est dessinee en vectoriel
 COTE_MAX = 1400          # les notes manuscrites restent lisibles, le base64 reste petit
+COTE_MAX_CLAUDE = 1568   # Claude reduit lui-meme toute image au-dela : autant lui donner sa taille
+PHOTOS_EN_MEME_TEMPS = 4  # photos transcrites de front (les fournisseurs gratuits tolerent 20 requetes/min)
+# La reflexion du CLI claude pour rediger le cours (low, medium, high...) ; vide : celle du CLI par defaut. Mesure du
+# 22 nov (memes sources, Haiku) : sans reglage, 72 % de la sortie est de la reflexion (26 849 / 37 221 jetons, 153 s) ;
+# en « medium », moitie moins de jetons et de temps, MAIS la methode est moins suivie (4 « À retenir » au lieu de 11,
+# 3 « Complément » au lieu de 10, plus aucun lien vers le vocabulaire). Garde donc par defaut ; INCIPIT_EFFORT_REDACTION
+# sert aux essais (a refaire avec Opus avant de le baisser).
+EFFORT_REDACTION = os.environ.get("INCIPIT_EFFORT_REDACTION") or None
 MAX_JETONS_PHOTO = 2000
 MAX_JETONS_COURS = 16000
 MAX_JETONS_PARTIE = 4000    # plafond de securite ; la cible reelle est calculee
@@ -670,7 +678,7 @@ def probleme(moteur: str, fichier: Path) -> str | None:
 
 # ------------------------------------------------------------------- sources
 
-def photo_en_base64(chemin: Path) -> str:
+def photo_en_base64(chemin: Path, cote: int = 0) -> str:
     """Photo -> JPEG base64. Redimensionner : une photo de telephone fait 4000 px
     de large, l'API la refuserait et la lisibilite du manuscrit n'y gagne rien."""
     from PIL import Image, ImageOps
@@ -678,7 +686,7 @@ def photo_en_base64(chemin: Path) -> str:
     im = Image.open(chemin)
     im = ImageOps.exif_transpose(im)          # sinon les photos prises de cote sont couchees
     im = im.convert("RGB")
-    im.thumbnail((COTE_MAX, COTE_MAX))
+    im.thumbnail((cote or COTE_MAX, cote or COTE_MAX))
     tampon = io.BytesIO()
     im.save(tampon, "JPEG", quality=82)
     return base64.b64encode(tampon.getvalue()).decode()
@@ -740,13 +748,16 @@ def images_du_pdf(chemin: Path, dst: Path, base: Path) -> dict[int, tuple[str, b
     dossier = dst / slug(chemin.stem)
     dossier.mkdir(parents=True, exist_ok=True)
     liens: dict[int, tuple[str, bool]] = {}
+    depuis = chemin.stat().st_mtime
     with fitz.open(str(chemin)) as doc:
         for i, page in enumerate(doc, 1):
-            zoom = LARGEUR_DIAPO / max(page.rect.width, 1)
-            pix = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom))
             fichier = dossier / f"p{i:02d}.webp"
-            Image.frombytes("RGB", (pix.width, pix.height), pix.samples) \
-                 .save(fichier, "WEBP", quality=82, method=4)
+            # deja rendue depuis la derniere modification du PDF (une regeneration) : on la garde
+            if not (fichier.is_file() and fichier.stat().st_mtime >= depuis):
+                zoom = LARGEUR_DIAPO / max(page.rect.width, 1)
+                pix = page.get_pixmap(matrix=fitz.Matrix(zoom, zoom))
+                Image.frombytes("RGB", (pix.width, pix.height), pix.samples) \
+                     .save(fichier, "WEBP", quality=82, method=4)
             liens[i] = (fichier.relative_to(base).as_posix(),
                         porte_une_figure(page))
     return liens
@@ -842,20 +853,93 @@ def texte_du_lien(fichier: Path) -> tuple[str, str]:
 
 # "12", "3 / 42", "Page 3 sur 42" : la pagination, que `--- page N ---` porte deja
 PAGINATION = re.compile(r"^(page\s*)?\d+(\s*(/|sur|of)\s*\d+)?$", re.I)
+# Le compteur collé au bout du pied de page beamer (« … Master Info – 2019-2020 4 / 33 ») : retire pour reconnaitre le gabarit
+COMPTEUR_FIN = re.compile(r"\s+\d+\s*/\s*\d+\s*$")
+
+
+def cle_gabarit(ligne: str) -> str:
+    return COMPTEUR_FIN.sub("", ligne.strip())
 
 
 def lignes_repetees(textes: list[str]) -> set[str]:
     """Les lignes que le gabarit des diapos colle sur presque chaque page (nom du
     cours, de l'ecole, du prof) : renvoyees a chaque appel de section, elles
-    coutent sans rien apprendre. Comparees a l'identique : "Notion 3" et
-    "Notion 4" sont du contenu, pas du gabarit."""
+    coutent sans rien apprendre. Comparees a l'identique (le numero de page en
+    bout de ligne mis a part) : "Notion 3" et "Notion 4" sont du contenu, pas du
+    gabarit."""
     if len(textes) < 4:
         return set()
     vues: dict[str, int] = {}
     for t in textes:
-        for ligne in {l.strip() for l in t.splitlines()}:
+        for ligne in {cle_gabarit(l) for l in t.splitlines()}:
             vues[ligne] = vues.get(ligne, 0) + 1
     return {l for l, n in vues.items() if l and n >= 0.6 * len(textes)}
+
+
+# Les PDF faits avec LaTeX ecrivent l'accent a cote de sa lettre (« Sp´ecificit´e ») et gardent les ligatures (« ﬁ »)
+ACCENTS_LATEX = {"´": dict(zip("eEaoiuy", "éÉáóíúý")), "`": dict(zip("eEaAuo", "èÈàÀùò")),
+                 "ˆ": dict(zip("eEaioAu", "êÊâîôÂû")), "¨": dict(zip("eiuoEI", "ëïüöËÏ")), "¸": dict(zip("cC", "çÇ"))}
+LIGATURES = {"ﬁ": "fi", "ﬂ": "fl", "ﬀ": "ff", "ﬃ": "ffi", "ﬄ": "ffl", "ﬅ": "st", "ﬆ": "st"}
+
+
+def reparer_texte_pdf(t: str) -> str:
+    for k, v in LIGATURES.items():
+        t = t.replace(k, v)
+    t = re.sub(r"([´`ˆ¨¸])([A-Za-z])", lambda m: ACCENTS_LATEX[m[1]].get(m[2], m[0]), t)
+    return re.sub(r"([A-Za-z])([´`ˆ¨¸])(?![A-Za-z])", lambda m: ACCENTS_LATEX[m[2]].get(m[1], m[0]), t)
+
+
+def lignes_de_la_page(page) -> str:
+    """Le texte d'une page rendu ligne a ligne, tel qu'on le voit : les morceaux places a la meme hauteur sont recolles
+    (du code beamer sortait un mot par ligne), et les espaces de lettrage -- de vrais caracteres espace, bien plus
+    etroits qu'un espace entre deux mots -- sont retires (« c l a s s p o i n t » redevient « class point »).
+    Mesure sur un CM de COO (94 diapos) : un tiers de jetons en moins, et du code lisible pour le modele."""
+    morceaux = []
+    for b in page.get_text("rawdict")["blocks"]:
+        for l in b.get("lines", []):
+            chars = [(c, s["size"]) for s in l["spans"] for c in s["chars"]]
+            if chars:
+                morceaux.append(((l["bbox"][1] + l["bbox"][3]) / 2, l["bbox"][0], chars))
+    morceaux.sort(key=lambda m: (round(m[0]), m[1]))
+    rangs: list[list] = []
+    for y, _x, chars in morceaux:
+        taille = max(s for _, s in chars)
+        if rangs and abs(rangs[-1][0] - y) <= max(1.5, taille * 0.35):
+            rangs[-1][1].extend(chars)
+        else:
+            rangs.append([y, list(chars)])
+    lignes = []
+    for _y, chars in rangs:
+        chars.sort(key=lambda cs: cs[0]["bbox"][0])
+        t, fin = "", None
+        for c, taille in chars:
+            ch, x0, x1 = c["c"], c["bbox"][0], c["bbox"][2]
+            if ch.isspace():
+                if x1 - x0 >= taille * 0.22 and t and not t.endswith(" "):
+                    t += " "
+            else:
+                # deux morceaux d'une meme ligne visuelle, ecartes, sans espace entre eux
+                if fin is not None and x0 - fin > taille * 0.3 and t and not t.endswith(" "):
+                    t += " "
+                t += ch
+            fin = x1
+        if t.strip():
+            lignes.append(t.strip())
+    return reparer_texte_pdf(SAUT.join(lignes))
+
+
+# Le lien court d'une figure de diapo (« cours3bis-p07 ») -> son vrai lien Obsidian : les longs chemins repetes sur
+# chaque page coutaient ~45 jetons par diapo ; poser_figures remet les vrais liens dans le cours ecrit
+ALIAS_FIGURES: dict[str, str] = {}
+
+
+def poser_figures(md: str) -> str:
+    """Remplace les liens courts des figures (![[cours3bis-p07]]) par leur vrai chemin, dans le cours ecrit."""
+    if not ALIAS_FIGURES:
+        return md
+    motif = re.compile(r"!\[\[(" + "|".join(map(re.escape, sorted(ALIAS_FIGURES, key=len, reverse=True)))
+                       + r")(?:\.webp)?(\|[^\]]*)?\]\]")
+    return motif.sub(lambda m: f"![[{ALIAS_FIGURES[m[1]]}{m[2] or ''}]]", md)
 
 
 def texte_du_pdf(chemin: Path,
@@ -874,29 +958,37 @@ def texte_du_pdf(chemin: Path,
     images = images or {}
     try:
         import pymupdf  # « import fitz » est deprecie et l'annonce a chaque PDF
-        textes = [page.get_text().strip() for page in pymupdf.open(str(chemin))]
+        textes = []
+        for page in pymupdf.open(str(chemin)):
+            try:
+                textes.append(lignes_de_la_page(page))
+            except Exception:          # une page au format inattendu : le texte brut, comme avant
+                textes.append(reparer_texte_pdf(page.get_text().strip()))
     except ImportError:
         # fitz absent : repli sur pypdf
         from pypdf import PdfReader
-        textes = [(page.extract_text() or "").strip()
+        textes = [reparer_texte_pdf((page.extract_text() or "").strip())
                   for page in PdfReader(str(chemin)).pages]
 
     gabarit = lignes_repetees(textes)
     pages, retirees = [], []
+    nom_court = slug(chemin.stem)
     for i, t in enumerate(textes, 1):
         garde = []
         for ligne in t.splitlines():
             if PAGINATION.match(ligne.strip()):
                 continue
-            if ligne.strip() in gabarit:
-                if ligne.strip() not in retirees:
-                    retirees.append(ligne.strip())
+            if cle_gabarit(ligne) in gabarit:
+                if cle_gabarit(ligne) not in retirees:
+                    retirees.append(cle_gabarit(ligne))
             else:
                 garde.append(ligne)
         t = SAUT.join(garde).strip()
         lien = ""
         if i in images and images[i][1]:
-            lien = f"  [SCHEMA OU FIGURE, a afficher si la notion est traitee ici : ![[{images[i][0]}]]]"
+            alias = f"{nom_court}-p{i:02d}"
+            ALIAS_FIGURES[alias] = images[i][0]
+            lien = f"  [SCHEMA OU FIGURE ![[{alias}]]]"
         if t or lien:
             pages.append(f"--- page {i} ---{lien}\n{t}")
 
@@ -926,11 +1018,14 @@ PAR_PAQUETS = {"gratuit", "openrouter"}   # openrouter : ses modeles gratuits co
 
 def repondre(moteur: str, modele: str, cle: str | None, systeme: str | None,
              texte: str, cle_env: Path | None = None, photo: Path | None = None,
-             max_jetons: int = MAX_JETONS_PHOTO, au_fil=None) -> str:
+             max_jetons: int = MAX_JETONS_PHOTO, au_fil=None, effort: str | None = None,
+             cache: bool = False) -> str:
     """Une question posee au modele choisi.
 
     `photo` joint une image, `au_fil(texte_cumule)` suit la reponse en direct.
     `cle_env` n'est utile qu'a "gratuit" : lui seul doit lire plusieurs cles.
+    `effort`, `cache` : la reflexion et le cache du CLI claude (cf. _claude_cli ; les
+    autres moteurs les ignorent).
     Chaque moteur parle son dialecte ici et seulement ici : le reste du programme
     ne sait pas a qui il s'adresse. Chaque appel est signale (cf. suivi).
     """
@@ -942,7 +1037,7 @@ def repondre(moteur: str, modele: str, cle: str | None, systeme: str | None,
             return _api_openai(URL_FOURNISSEUR[moteur], modele, cle, systeme, texte,
                                photo, max_jetons, flux)
         _noter_moteur("claude-cli", modele)
-        return _claude_cli(modele, systeme, texte, photo, flux)
+        return _claude_cli(modele, systeme, texte, photo, flux, effort, cache)
     return suivi(moteur, modele, systeme, texte, photo, appel, au_fil,
                  flux_libre=moteur == "claude-cli")
 
@@ -1251,14 +1346,22 @@ def _api_openai(url: str, modele: str, cle: str, systeme: str | None, texte: str
     return ""
 
 
+SYSTEME_PHOTO = "Tu transcris fidelement des photos de notes de cours manuscrites, en francais."
+
+
 def _claude_cli(modele: str, systeme: str | None, texte: str, photo: Path | None,
-                au_fil) -> str:
+                au_fil, effort: str | None = None, cache: bool = False) -> str:
     """Le CLI `claude` en sous-processus : l'abonnement paie, aucune cle a fournir.
 
-    --setting-sources vide : sans ca le CLI chargerait hooks, CLAUDE.md et skills de
-    la machine, qui n'ont rien a faire dans la redaction d'un cours.
-    Une photo se lit par l'outil Read, pas en base64 ; l'invite systeme reste alors
-    celle du CLI, la seule a savoir se servir de ses outils.
+    --setting-sources vide, --strict-mcp-config et --tools vide : sans eux le CLI
+    chargerait hooks, CLAUDE.md, skills, serveurs MCP et la description de ses
+    outils -- mesure : 19 146 jetons envoyes a chaque appel pour rien (627 sans).
+    Une photo part dans le message lui-meme (image en base64, entree stream-json) :
+    pas d'outil Read, donc ni l'invite systeme du CLI ni un tour de plus.
+    `effort` : la reflexion du modele (low, medium, high...) ; rien = celle du CLI.
+    `cache` : le CLI met toute la demande en cache pour une heure, ecriture comptee
+    le double d'une lecture normale ; ca ne paie que si la meme demande repart
+    (supports d'un meme cours). Sinon (par defaut), cache coupe : prix normal.
     La consigne systeme part dans un fichier (--system-prompt-file), jamais sur la
     ligne de commande : cf. trouver_claude.
     """
@@ -1266,16 +1369,21 @@ def _claude_cli(modele: str, systeme: str | None, texte: str, photo: Path | None
     if not exe:
         raise RuntimeError("CLI `claude` introuvable")
     cmd = [exe, "-p", "--model", modele,
-           "--setting-sources", "", "--output-format", "stream-json",
+           "--setting-sources", "", "--strict-mcp-config", "--tools", "",
+           "--no-session-persistence", "--output-format", "stream-json",
            "--include-partial-messages", "--verbose"]
+    if effort:
+        cmd += ["--effort", effort]
     consigne = None
+    entree = texte
     if photo:
-        texte = f"{texte}\n\nLa photo a transcrire : {photo.resolve()}"
-        # --tools : seul Read est charge, pas la dizaine d'autres outils du CLI
-        # et leurs descriptions, repayees a chaque photo
-        cmd += ["--tools", "Read", "--allowed-tools", "Read",
-                "--add-dir", str(photo.resolve().parent)]
-    elif systeme:
+        systeme = systeme or SYSTEME_PHOTO
+        cmd += ["--input-format", "stream-json"]
+        entree = json.dumps({"type": "user", "message": {"role": "user", "content": [
+            {"type": "text", "text": texte},
+            {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg",
+                                         "data": photo_en_base64(photo, COTE_MAX_CLAUDE)}}]}}) + "\n"
+    if systeme:
         with tempfile.NamedTemporaryFile("w", encoding="utf-8", suffix=".md",
                                          prefix="incipit-consigne-", delete=False) as f:
             f.write(systeme)
@@ -1283,10 +1391,15 @@ def _claude_cli(modele: str, systeme: str | None, texte: str, photo: Path | None
         cmd += ["--system-prompt-file", str(consigne)]
 
     try:
+        env = dict(os.environ)
+        if cache:
+            env.pop("DISABLE_PROMPT_CACHING", None)
+        else:
+            env["DISABLE_PROMPT_CACHING"] = "1"
         p = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                              stderr=subprocess.PIPE, text=True, encoding="utf-8",
-                             errors="replace", bufsize=1, creationflags=SANS_FENETRE)
-        p.stdin.write(texte)
+                             errors="replace", bufsize=1, creationflags=SANS_FENETRE, env=env)
+        p.stdin.write(entree)
         p.stdin.close()
 
         morceaux: list[str] = []
@@ -1350,8 +1463,9 @@ def _lire_photo(moteur, modele, cle, photo: Path, cle_env, choix: str) -> str:
         # modele de redaction pour ne pas faire repayer les photos deja lues
         modele = CLAUDE_PHOTO
     if t.fournisseur is None:
+        # recopier une page ne demande pas de reflexion : effort bas (CLI claude seulement)
         return repondre(moteur, modele, cle, None, CONSIGNE_PHOTO, cle_env=cle_env,
-                        photo=photo, max_jetons=MAX_JETONS_PHOTO)
+                        photo=photo, max_jetons=MAX_JETONS_PHOTO, effort="low")
     if t.fournisseur == "ocr":
         cle_nim = cle_api(cle_env, FOURNISSEURS["nim"].cle)
         return suivi("ocr", t.modele, None, CONSIGNE_PHOTO, photo,
@@ -1382,13 +1496,13 @@ def transcrire(moteur: str, modele: str | None, cle: str | None, photos: list[Pa
     # retombe sur le nom du moteur. Limite connue : si Gemini echoue aujourd'hui
     # et que NIM repond, puis que Gemini redevient disponible demain, le cache
     # sert quand meme la version NIM tant que la photo n'a pas change de main.
-    resultats = []
-    for i, photo in enumerate(photos, 1):
-        dire(f"Transcription des photos  ({i}/{len(photos)})",
-             PHOTO_DEBUT + round((PHOTO_FIN - PHOTO_DEBUT) * (i - 1) / len(photos)))
-        marque = modele or moteur
-        if choix != "auto":         # "auto" garde les empreintes deja sur disque
-            marque = f"{marque}-{choix}"
+    marque = modele or moteur
+    if choix != "auto":         # "auto" garde les empreintes deja sur disque
+        marque = f"{marque}-{choix}"
+    faites = [0]
+
+    def une(i_photo: tuple[int, Path]) -> str:
+        i, photo = i_photo
         garde = cache / f"{empreinte(photo, marque)}.txt"
         if garde.is_file():
             texte = garde.read_text(encoding="utf-8")
@@ -1398,8 +1512,18 @@ def transcrire(moteur: str, modele: str | None, cle: str | None, photos: list[Pa
                 texte = _lire_photo(moteur, modele, cle, photo, cle_env, choix)
             garde.write_text(texte, encoding="utf-8")
             dire(f"{photo.name} : {len(texte.split())} mots")
-        resultats.append((photo.name, texte))
-    return resultats
+        faites[0] += 1
+        dire(f"Transcription des photos  ({faites[0]}/{len(photos)})",
+             PHOTO_DEBUT + round((PHOTO_FIN - PHOTO_DEBUT) * faites[0] / len(photos)))
+        return texte
+
+    # Les photos lues en meme temps (elles ne dependent pas l'une de l'autre) : trois photos prenaient 42 s a la file.
+    # Une photo qui echoue arrete tout (map leve son erreur), et celles deja lues restent au cache.
+    if photos:
+        dire(f"Transcription des photos  (0/{len(photos)})", PHOTO_DEBUT)
+    with ThreadPoolExecutor(max_workers=PHOTOS_EN_MEME_TEMPS) as pool:
+        textes = list(pool.map(une, enumerate(photos, 1)))
+    return [(p.name, t) for p, t in zip(photos, textes)]
 
 
 # -------------------------------------------------------------------- prompt
@@ -1525,7 +1649,8 @@ def demande(matiere: str, type_: str, titre: str,
     if any("SCHEMA OU FIGURE" in t for _, t in pdfs):
         morceaux += ["", "Les pages de diapo marquees SCHEMA OU FIGURE portent un "
                      "dessin, un graphe ou un tableau que le texte extrait ne rend "
-                     "pas ; leur lien ![[...]] est dans leur en-tete. Affiche l'image "
+                     "pas ; leur lien ![[...]] est dans leur en-tete, a recopier tel "
+                     "quel (lien court, il est complete apres coup). Affiche l'image "
                      "a l'endroit du cours ou la notion est traitee, plutot que de la "
                      "redecrire ou de la redessiner. Les pages sans lien sont du texte "
                      "seul : leur contenu part dans le corps du cours."]
@@ -2212,7 +2337,7 @@ def fabriquer(sources: Path, sortie: Path, matiere: str, type_: str, titre: str,
                 moteur, modele, cle,
                 v2.consigne(langue, v2.PLAFONDS[longueur]) + "\n\n" + guide_schemas() + consignes_etudiant()
                 if en_v2 else consigne_systeme(langue),
-                base, cle_env=cle_env, max_jetons=MAX_JETONS_COURS, au_fil=avancer))
+                base, cle_env=cle_env, max_jetons=MAX_JETONS_COURS, au_fil=avancer, effort=EFFORT_REDACTION))
     if len(md.split()) < 200:
         raise SystemExit(f"Texte trop court, quelque chose a echoue :\n{md[:400]}")
     if en_v2:
@@ -2226,7 +2351,7 @@ def fabriquer(sources: Path, sortie: Path, matiere: str, type_: str, titre: str,
             dire(f"{v2.mots_comptes(md)} mots comptés pour un plafond de {plafond}, "
                  f"{len(v2.notions(md))} notions")
 
-    md = tracer_moteur(md, MOTEUR_UTILISE)
+    md = tracer_moteur(poser_figures(md), MOTEUR_UTILISE)
     dire(f"redige par : {MOTEUR_UTILISE or 'moteur inconnu'}")
     sortie.parent.mkdir(parents=True, exist_ok=True)
     garder_version(sortie)
@@ -2367,7 +2492,7 @@ def reecrire(sources: Path, sortie: Path, matiere: str, type_: str, titre: str,
     if len(nouveau.split()) < 30:
         raise SystemExit(f"Reponse trop courte, la section n'est pas remplacee :\n{nouveau[:300]}")
     garder_version(sortie)
-    sortie.write_text(remplacer_section(md, titre_section, nouveau), encoding="utf-8")
+    sortie.write_text(remplacer_section(md, titre_section, poser_figures(nouveau)), encoding="utf-8")
     dire(f"« {titre_section} » reecrite : {mots} -> {len(nouveau.split())} mots",
          REDACTION_FIN)
 
@@ -2485,8 +2610,27 @@ def _self_test() -> None:
         assert all(f"Notion {i}" in rendu for i in range(1, 6)), rendu
         assert "/ 5" not in rendu, rendu
         assert PAGINATION.match("Page 3 sur 42") and not PAGINATION.match("Notion 3")
-        assert "![[a/p2.png]]" in rendu and "a/p3.png" not in rendu, rendu
+        # le lien court de la figure, puis son vrai chemin remis dans le cours ecrit
+        assert "![[diapos-p02]]" in rendu and "p03" not in rendu and "a/p2.png" not in rendu, rendu
+        assert poser_figures("Voir ![[diapos-p02]] puis ![[diapos-p02.webp|400]].") == \
+            "Voir ![[a/p2.png]] puis ![[a/p2.png|400]].", poser_figures("![[diapos-p02]]")
         assert lignes_repetees(["a", "a", "a"]) == set(), "trop peu de pages"
+        # le pied de page beamer avec son compteur colle au bout : du gabarit quand meme
+        assert lignes_repetees([f"Titre {i}\nProf X - M1 {i} / 4" for i in range(1, 5)]) == {"Prof X - M1"}
+        # accents et ligatures des PDF LaTeX
+        assert reparer_texte_pdf("Sp´eciﬁcit´e, Amiti´es, fran¸cais, r`egle") == "Spécificité, Amitiés, français, règle"
+        assert reparer_texte_pdf("x = 1 ´ y") == "x = 1 ´ y", "un accent sans lettre derriere ne bouge pas"
+
+        # lettrage : des espaces etroits entre les lettres (code beamer) sont retires, pas les vrais espaces
+        diapos = pymupdf.open()
+        p = diapos.new_page()
+        x = 50
+        for ch in "c l a s s  point":
+            p.insert_text((x, 80), ch, fontsize=12, fontname="cour")
+            x += 2 if ch == " " else 7.2
+        chemin_pdf = Path(tmp) / "lettrage.pdf"
+        diapos.save(chemin_pdf)
+        assert lignes_de_la_page(pymupdf.open(chemin_pdf)[0]).replace(" ", "") == "classpoint"
 
     assert slug("Génie Logiciel M1") == "genie-logiciel-m1"
     assert slug("!!") == "cours"

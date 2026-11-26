@@ -18,7 +18,8 @@ if (process.platform === 'linux' && (process.env.APPIMAGE || process.env.INCIPIT
 if (process.env.INCIPIT_DATA) app.setPath('userData', path.resolve(process.env.INCIPIT_DATA))
 const SMOKE = process.env.INCIPIT_SMOKE // essai de démarrage : dossier où poser une capture, puis quitter
 
-let win = null
+let win = null, cours = null // cours : ce que le module Cours rend à l'appli (ouvrir un .incipit)
+const opened = [] // les .incipit reçus de macOS (open-file) avant que la fenêtre existe
 
 function createWindow() {
   const configPath = path.join(app.getPath('userData'), 'config.json')
@@ -39,12 +40,14 @@ function createWindow() {
   // Ce que le module Cours attend de son hôte : handle(canal, fn), send(canal, donnée), le fichier de réglages et la fenêtre
   const mine = e => !win.isDestroyed() && e.sender === win.webContents
   const ns = c => `mod:cours:${c}`
-  require('./modules/cours/main')({
+  cours = require('./modules/cours/main')({
     handle: (c, fn) => ipcMain.handle(ns(c), (e, ...a) => mine(e) ? fn(...a) : null),
     send: (c, data) => !win.isDestroyed() && win.webContents.send(ns(c), data),
     configPath, readConfig, win,
   })
   require('./ai/companion').start({ configPath })
+  // Un cours en un fichier .incipit (modules/cours/partage.js) : double-clic, « Ouvrir avec », ou donné en argument
+  win.webContents.once('did-finish-load', () => cours.partage.openArgs([...process.argv, ...opened.splice(0)]))
   ipcMain.on('open-url', (e, url) => mine(e) && typeof url === 'string' && /^https:\/\/\S+$/i.test(url) && shell.openExternal(url))
   ipcMain.on('sound', () => {}) // les alertes de série sonnaient dans Hitodama ; ici, un bandeau suffit
 
@@ -108,8 +111,10 @@ function createWindow() {
 
 if (!app.requestSingleInstanceLock()) app.quit()
 else {
-  // Relancé alors qu'il tourne déjà (le lanceur Incipit.exe) : sa fenêtre revient devant
-  app.on('second-instance', () => { if (win && !win.isDestroyed()) { if (win.isMinimized()) win.restore(); win.show(); win.focus() } })
+  // Relancé alors qu'il tourne déjà (le lanceur Incipit.exe, un double-clic sur un .incipit) : sa fenêtre revient devant
+  app.on('second-instance', (_, argv) => { if (win && !win.isDestroyed()) { cours?.partage.openArgs(argv); if (win.isMinimized()) win.restore(); win.show(); win.focus() } })
+  // macOS donne le fichier par cet événement, pas dans argv
+  app.on('open-file', (e, file) => { e.preventDefault(); if (cours) cours.partage.openArgs([file]); else opened.push(file) })
   app.whenReady().then(() => {
     if (platform.IS_MAC) app.dock?.setIcon(path.join(__dirname, '..', 'assets', 'logo.png')) // lancé sans paquet .app (npm start)
     createWindow()

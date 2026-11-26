@@ -81,100 +81,183 @@
   })
 
   // ---------------------------------------------------------------- memoire
-  // { type: "memoire", zones?: ["Pile", "Tas"], cadre?: "main()", etapes: [{ variables: [{ nom, valeur? | vers?: id, ton? }],
-  //   objets: [{ id, classe?, champs?: [["solde", "10"], { nom, valeur? | vers? }], ton? }], legende? }] }
-  const RH = 28, RG = 6, OH = 26, FRH = 22
+  // { type: "memoire", zones?: ["Pile", "Tas"], cadre?: "main()", etapes: [{
+  //     cadres?: [{ nom, variables, note?, ton? }] (du bas, main, vers le haut, l'appel en cours) — ou variables (un seul cadre),
+  //     globales?: [variable], objets: [{ id, classe?, champs?: [["solde", "10"], variable], note?, ton? }], legende? }] }
+  // variable : { nom, valeur? | vers?: id | null, at?: case visée de l'objet, versVar?: [cadre, nom, case?] (cadre -1 :
+  //   les globales), champs?: [variable] (une valeur posée là : struct, tableau local), note?, ton? }
+  // À la manière de Python Tutor : la pile à gauche (les globales au-dessus), le tas à droite, les flèches des références.
+  const RH = 28, RG = 6, OH = 26, FRH = 22, HDR = 26, CG = 8, IND = 14
+  const refId = v => (v === undefined ? undefined : v === null ? null : str(v, 24))
+  function normVar(v, depth = 0) {
+    const o = Array.isArray(v) ? { nom: v[0], valeur: v[1] } : v && typeof v === 'object' ? v : { nom: v }
+    const vv = Array.isArray(o.versVar) ? [Number.isInteger(o.versVar[0]) ? o.versVar[0] : 0, str(o.versVar[1], 24), o.versVar[2] == null ? '' : str(o.versVar[2], 24)] : undefined
+    return { nom: str(o.nom, 24), valeur: str(o.valeur, 28), vers: refId(o.vers), at: o.at == null ? '' : str(o.at, 24), versVar: vv, note: str(o.note, 24),
+      ton: ton(o.ton), champs: depth < 2 && Array.isArray(o.champs) ? o.champs.map(c => normVar(c, depth + 1)) : [] }
+  }
+  // Les lignes d'une liste de variables : une par variable et par case (indentée)
+  const rowsOf = (vs, pre = '', d = 0) => vs.flatMap(v => [{ v, key: pre + v.nom, d }, ...rowsOf(v.champs, `${pre}${v.nom}.`, d + 1)])
   S.type({
     name: 'memoire', alias: ['memory', 'pile-tas', 'tas'],
-    check(s, err) {
-      if (!s.etapes && (s.variables || s.objets)) s.etapes = [{ variables: s.variables, objets: s.objets, legende: s.legende }]
+    check(s, err, opts = {}) {
+      if (!s.etapes && (s.variables || s.objets || s.cadres)) s.etapes = [{ variables: s.variables, cadres: s.cadres, globales: s.globales, objets: s.objets, legende: s.legende }]
       s.etapes = arr(s.etapes)
       if (!s.etapes.length) return err('memoire : il faut « etapes » (ou « variables » et « objets »)')
-      if (s.etapes.length > 8) return err('memoire : 8 étapes au plus')
+      if (!opts.libre && s.etapes.length > 8) return err('memoire : 8 étapes au plus')
       const z = arr(s.zones)
       s.zones = [str(z[0] ?? 'Pile', 24), str(z[1] ?? 'Tas', 24)]
       s.cadre = str(s.cadre, 40)
-      const ref = v => (v && typeof v === 'object' ? v : null)
-      s.etapes.forEach((e, i) => {
-        e.legende = str(e.legende, 160)
-        e.objets = arr(e.objets).map(o => ({ id: str(o?.id ?? o?.nom, 24), classe: str(o?.classe ?? o?.type, 32), ton: ton(o?.ton),
-          champs: arr(o?.champs).map(c => (Array.isArray(c) ? { nom: str(c[0], 24), valeur: str(c[1], 28) } : { nom: str(ref(c)?.nom, 24), valeur: str(ref(c)?.valeur, 28), vers: ref(c)?.vers === undefined ? undefined : ref(c).vers === null ? null : str(ref(c).vers, 24) })) }))
-        e.variables = arr(e.variables).map(v => ({ nom: str(v?.nom, 24), valeur: str(v?.valeur, 28), ton: ton(v?.ton), vers: v?.vers === undefined ? undefined : v.vers === null ? null : str(v.vers, 24) }))
-        const ids = new Set(e.objets.map(o => o.id))
-        if (e.variables.length > 10 || e.objets.length > 6) err(`memoire : 10 variables et 6 objets au plus (étape ${i + 1})`)
-        if (e.objets.some(o => !o.id)) err(`memoire : un objet sans « id » (étape ${i + 1})`)
-        if (e.objets.some(o => o.champs.length > 6)) err('memoire : 6 champs au plus par objet')
-        for (const v of [...e.variables, ...e.objets.flatMap(o => o.champs)]) {
+      s.boites = s.etapes.some(e => Array.isArray(e?.cadres)) // des cadres donnés : chacun dans sa boîte
+      s.etapes = s.etapes.map((e, i) => {
+        const cadres = Array.isArray(e?.cadres) ? e.cadres.map(c => ({ nom: str(c?.nom, 40), note: str(c?.note, 32), ton: ton(c?.ton), variables: arr(c?.variables).map(v => normVar(v)) }))
+          : [{ nom: s.cadre, note: '', ton: '', variables: arr(e?.variables).map(v => normVar(v)) }]
+        const st = { cadres, globales: arr(e?.globales).map(v => normVar(v)), legende: str(e?.legende, 160),
+          objets: arr(e?.objets).map(o => ({ id: str(o?.id ?? o?.nom, 24), classe: str(o?.classe ?? o?.type, 32), note: str(o?.note, 24), ton: ton(o?.ton), champs: arr(o?.champs).map(c => normVar(c, 2)) })) }
+        const ids = new Set(st.objets.map(o => o.id)), nv = cadres.reduce((n, c) => n + c.variables.length, 0) + st.globales.length
+        if (!opts.libre && (nv > 10 || st.objets.length > 6)) err(`memoire : 10 variables et 6 objets au plus (étape ${i + 1})`)
+        if (st.objets.some(o => !o.id)) err(`memoire : un objet sans « id » (étape ${i + 1})`)
+        if (!opts.libre && st.objets.some(o => o.champs.length > 6)) err('memoire : 6 champs au plus par objet')
+        for (const r of [...rowsOf([...cadres.flatMap(c => c.variables), ...st.globales]), ...st.objets.flatMap(o => rowsOf(o.champs))]) {
+          const v = r.v
           if (!v.nom) err(`memoire : une variable ou un champ sans nom (étape ${i + 1})`)
           if (v.vers && !ids.has(v.vers)) err(`memoire : « ${v.nom} » pointe vers « ${v.vers} », absent des objets de l'étape ${i + 1}`)
+          if (v.versVar) {
+            const [ci, nom] = v.versVar, list = ci === -1 ? st.globales : cadres[ci]?.variables
+            if (!list?.some(x => x.nom === nom)) err(`memoire : « ${v.nom} » pointe vers la variable « ${nom} », absente de l'étape ${i + 1}`)
+          }
         }
+        return st
       })
     },
     steps: s => s.etapes.length,
     captions: s => s.etapes.map(e => e.legende),
     render(s, ctx) {
-      const e = s.etapes[ctx.step ?? s.etapes.length - 1]
-      // Places fixes d'une étape à l'autre : une variable, un objet gardent leur ligne (rien ne saute en avançant)
-      const vOrder = [], oOrder = []
+      const e = s.etapes[ctx.step ?? s.etapes.length - 1], M = { mono: true }
+      // Places fixes sur tout le programme : la ligne d'une variable dans son cadre (cadre = son rang et son nom), l'ordre
+      // des objets ; la pile est posée sur son fond (main ne bouge pas, les appels s'empilent au-dessus)
+      const order = new Map(), oOrder = []
+      const push = (fk, rows) => { const o = order.get(fk) ?? order.set(fk, []).get(fk); for (const r of rows) if (!o.includes(r.key)) o.push(r.key) }
       for (const st of s.etapes) {
-        for (const v of st.variables) if (!vOrder.includes(v.nom)) vOrder.push(v.nom)
-        for (const v of st.variables) if (v.vers && !oOrder.includes(v.vers)) oOrder.push(v.vers)
+        st.cadres.forEach((c, ci) => push(`${ci}|${c.nom}`, rowsOf(c.variables)))
+        push('G', rowsOf(st.globales))
         for (const o of st.objets) if (!oOrder.includes(o.id)) oOrder.push(o.id)
       }
-      const vals = s.etapes.flatMap(st => st.variables), objs = s.etapes.flatMap(st => st.objets)
-      const nameW = Math.max(28, ...vals.map(v => measure(v.nom, MONO, { mono: true })))
-      const cellW = Math.max(40, ...vals.map(v => (v.vers !== undefined ? (v.vers === null ? measure('null', MONO, { mono: true }) : 10) : measure(v.valeur, MONO, { mono: true })))) + 18
-      const top = 30 + (s.cadre ? 26 : 0), pileW = Math.max(16 + nameW + 10 + cellW + 16, capsW(s.zones[0]) + 32)
-      const pileH = top + vOrder.length * (RH + RG) + 10
-      const fieldW = c => measure(c.nom, MONO, { mono: true }) + 10 + (c.vers !== undefined ? 22 : measure(c.valeur, MONO, { mono: true }) + 10)
-      const objW = Math.max(120, ...objs.map(o => Math.max(measure(o.classe || o.id, FONT, { bold: true }) + 24, ...o.champs.map(c => fieldW(c) + 24))))
-      const objH = id => { const hs = objs.filter(o => o.id === id).map(o => OH + o.champs.length * FRH + (o.champs.length ? 8 : 0)); return Math.max(OH, ...hs) }
+      const allRows = s.etapes.flatMap(st => [...st.cadres.flatMap(c => rowsOf(c.variables)), ...rowsOf(st.globales)])
+      const nameW = Math.max(28, ...allRows.map(r => measure(r.v.nom, MONO, M) + r.d * IND))
+      const cellOf = v => (v.vers !== undefined || v.versVar ? (v.vers === null ? measure('null', MONO, M) : 10) : measure(v.valeur, MONO, M))
+      const cellW = Math.max(40, ...allRows.map(r => cellOf(r.v))) + 18
+      const noteW = Math.max(0, ...allRows.map(r => (r.v.note ? measure(r.v.note, SMALL) + 12 : 0)))
+      const headW = Math.max(0, ...s.etapes.flatMap(st => st.cadres.map(c => measure(c.nom, SMALL, M) + (c.note ? measure(c.note, SMALL) + 20 : 0))))
+      const gRows = order.get('G').length, hasG = gRows > 0
+      const pileW = Math.max(16 + nameW + 10 + cellW + noteW + 16, capsW(s.zones[0]) + 32, headW + 44, hasG ? capsW('Globales') + 32 : 0)
+      const frameH = (ci, c) => (c.nom ? HDR : 6) + order.get(`${ci}|${c.nom}`).length * (RH + RG) + 4
+      const pileOf = st => st.cadres.reduce((h, c, ci) => h + frameH(ci, c), 0) + Math.max(0, st.cadres.length - 1) * CG
+      const gH = hasG ? 30 + gRows * (RH + RG) + 6 : 0, pTop = hasG ? gH + 12 : 0
+      const maxPile = Math.max(...s.etapes.map(pileOf)), leftH = pTop + 30 + maxPile + 10
+      // Le tas
+      const objs = s.etapes.flatMap(st => st.objets), objRows = o => o.champs.length
+      const fieldW = c => measure(c.nom, MONO, M) + 10 + (c.vers !== undefined ? 22 : measure(c.valeur, MONO, M) + 10)
+      const objW = Math.max(120, ...objs.map(o => Math.max(measure(o.classe || o.id, FONT, { bold: true }) + 24 + (o.note ? measure(o.note, SMALL) + 16 : 0), ...o.champs.map(c => fieldW(c) + 24))))
+      const objH = o => OH + objRows(o) * FRH + (objRows(o) ? 8 : 0)
+      const tasOf = st => oOrder.filter(id => st.objets.some(o => o.id === id)).reduce((y, id) => y + objH(st.objets.find(o => o.id === id)) + 16, 30)
       const tx = pileW + 76, tasW = objW + 40 + (objs.some(o => o.champs.some(c => c.vers)) ? 28 : 0)
-      const oy = {}
-      let y = 30
-      for (const id of oOrder) { oy[id] = y; y += objH(id) + 16 }
-      const tasH = Math.max(y + 2, pileH), H = Math.max(pileH, tasH)
-      let b = rect(0, 0, pileW, H, 's-zone', 6) + rect(tx, 0, tasW, H, 's-zone', 6)
-      b += text(14, 16, s.zones[0].toUpperCase(), { anchor: 'start', size: CAP, caps: true, mono: true, cls: 's-t3' })
-      b += text(tx + 14, 16, s.zones[1].toUpperCase(), { anchor: 'start', size: CAP, caps: true, mono: true, cls: 's-t3' })
-      if (s.cadre) b += text(16, 40, s.cadre, { anchor: 'start', size: SMALL, mono: true, cls: 's-t2' })
-      // Les objets d'abord (les flèches passent dessus)
+      const H = Math.max(leftH, Math.max(...s.etapes.map(tasOf)) + 2)
+      const cap = (x, y, t) => text(x, y, t.toUpperCase(), { anchor: 'start', size: CAP, caps: true, mono: true, cls: 's-t3' })
+      const tc = t => (t && t !== 'dim' ? `s-tc-${t}` : t === 'dim' ? 's-t3' : 's-t1')
+      let b = ''
+      if (hasG) b += rect(0, 0, pileW, gH, 's-zone', 6) + cap(14, 16, 'Globales')
+      b += rect(0, pTop, pileW, H - pTop, 's-zone', 6) + cap(14, pTop + 16, s.zones[0])
+      b += rect(tx, 0, tasW, H, 's-zone', 6) + cap(tx + 14, 16, s.zones[1])
+      // Les objets d'abord (les flèches passent dessus), serrés dans l'ordre où ils sont apparus
       const at = {}
-      for (const o of e.objets) {
-        const ox = tx + 20, y0 = oy[o.id], h = OH + o.champs.length * FRH + (o.champs.length ? 8 : 0)
-        at[o.id] = { x: ox, y: y0, h }
-        b += item(ox, y0, objW, h, o.ton)
-        b += text(ox + 12, y0 + OH / 2, o.classe || o.id, { anchor: 'start', bold: true, cls: o.ton && o.ton !== 'dim' ? `s-tc-${o.ton}` : o.ton === 'dim' ? 's-t3' : 's-t1' })
-        if (o.champs.length) b += `<path d="M${r(ox)},${r(y0 + OH)} H${r(ox + objW)}" class="s-hair"/>`
+      let oy = 30
+      for (const id of oOrder) {
+        const o = e.objets.find(x => x.id === id)
+        if (!o) continue
+        const ox = tx + 20, h = objH(o)
+        at[o.id] = { x: ox, y: oy, h, rows: o.champs.map(c => c.nom) }
+        b += item(ox, oy, objW, h, o.ton)
+        b += text(ox + 12, oy + OH / 2, o.classe || o.id, { anchor: 'start', bold: true, cls: tc(o.ton) })
+        if (o.note) b += text(ox + objW - 10, oy + OH / 2, o.note, { anchor: 'end', size: SMALL, cls: o.ton && o.ton !== 'dim' ? `s-tc-${o.ton}` : 's-t3' })
+        if (o.champs.length) b += `<path d="M${r(ox)},${r(oy + OH)} H${r(ox + objW)}" class="s-hair"/>`
         o.champs.forEach((c, j) => {
-          const fy = y0 + OH + 4 + j * FRH + FRH / 2
+          const fy = oy + OH + 4 + j * FRH + FRH / 2
           b += text(ox + 12, fy, c.nom, { anchor: 'start', mono: true, size: MONO - 0.5, cls: 's-t3' })
-          if (c.vers === undefined) b += text(ox + objW - 12, fy, c.valeur, { anchor: 'end', mono: true, size: MONO - 0.5, cls: 's-t1' })
+          // un champ « accent » dans une boîte qui ne l'est pas : une pastille pleine derrière sa valeur (le texte clair
+          // de l'accent serait invisible sur le fond de la boîte)
+          if (c.vers === undefined && c.ton === 'acc' && o.ton !== 'acc') {
+            const w = measure(c.valeur, MONO - 0.5, { mono: true })
+            b += rect(ox + objW - 18 - w, fy - FRH / 2 + 2, w + 12, FRH - 4, 's-box s-b-acc', 3)
+          }
+          if (c.vers === undefined) b += text(ox + objW - 12, fy, c.valeur, { anchor: 'end', mono: true, size: MONO - 0.5, cls: c.ton ? tc(c.ton) : 's-t1' })
           else if (c.vers === null) b += text(ox + objW - 12, fy, 'null', { anchor: 'end', mono: true, size: MONO - 0.5, cls: 's-t3' })
           else b += `<circle cx="${r(ox + objW - 16)}" cy="${r(fy)}" r="3.5" class="s-f-acc"/>`
         })
+        oy += h + 16
       }
-      // Les variables, et leurs flèches vers le tas
+      const fieldY = (id, k) => { const t = at[id], j = k ? t.rows.findIndex(n => n === k || n === `[${k}]`) : -1; return j < 0 ? t.y + OH / 2 : t.y + OH + 4 + j * FRH + FRH / 2 }
+      // La pile : les cadres du fond (main) vers le haut ; les globales au-dessus
+      const cells = {}, arrows = []
+      const cx = 16 + nameW + 10
+      const drawRows = (rows, fk, y0, prefix) => {
+        rows.forEach((r0, i) => {
+          const v = r0.v, ry = y0 + i * (RH + RG)
+          cells[`${prefix}|${r0.key}`] = { y: ry + RH / 2 }
+          // le nom est hors de la case : en « accent », écrit fort (la couleur claire de l'accent est faite pour le dedans)
+          b += text(16 + nameW, ry + RH / 2, v.nom, { anchor: 'end', mono: true, size: r0.d ? MONO - 0.5 : MONO, bold: v.ton === 'acc', cls: v.ton === 'acc' ? 's-t1' : r0.d && !v.ton ? 's-t2' : tc(v.ton) })
+          const box = v.vers !== undefined || v.versVar || v.valeur
+          if (box) b += item(cx, ry, cellW, RH, v.ton && v.ton !== 'dim' ? v.ton : '', 3)
+          if (v.note) b += text(cx + cellW + 8, ry + RH / 2, v.note, { anchor: 'start', size: SMALL, cls: v.ton && v.ton !== 'dim' ? `s-tc-${v.ton}` : 's-t3' })
+          if (v.vers === null) b += text(cx + cellW / 2, ry + RH / 2, 'null', { mono: true, size: MONO, cls: 's-t3' })
+          else if (v.vers !== undefined || v.versVar) arrows.push({ v, x: cx + cellW / 2, y: ry + RH / 2 })
+          else if (v.valeur) b += text(cx + cellW / 2, ry + RH / 2, v.valeur, { mono: true, size: MONO, cls: 's-t1' })
+        })
+      }
+      const place = (vs, keys) => { const m = new Map(rowsOf(vs).map(x => [x.key, x])); return keys.map(k => m.get(k) ?? { v: null, key: k }) }
+      const drawPlaced = (vs, keys, y0, prefix) => {
+        // une ligne gardée pour une variable absente à ce pas : vide (rien ne saute)
+        const rows = place(vs, keys)
+        rows.forEach((r0, i) => { if (r0.v) drawRows([r0], null, y0 + i * (RH + RG), prefix) })
+      }
+      if (hasG) drawPlaced(e.globales, order.get('G'), 30, 'G')
+      let bottom = pTop + 30 + maxPile
+      e.cadres.forEach((c, ci) => {
+        const h = frameH(ci, c), fy = bottom - h
+        if (s.boites) {
+          b += rect(8, fy, pileW - 16, h, c.ton === 'dim' ? 's-hair s-dimbox' : 's-hair', 6)
+          if (c.ton && c.ton !== 'dim') b += `<rect x="9" y="${r(fy + 4)}" width="2.5" height="${r(Math.max(2, h - 8))}" rx="1" class="s-f-${c.ton}"/>`
+        }
+        if (c.nom) {
+          b += text(16, fy + HDR / 2 + 1, c.nom, { anchor: 'start', size: SMALL, mono: true, cls: c.ton && c.ton !== 'dim' ? `s-tc-${c.ton}` : 's-t2' })
+          if (c.note) b += text(pileW - 18, fy + HDR / 2 + 1, c.note, { anchor: 'end', size: SMALL, cls: c.ton && c.ton !== 'dim' ? `s-tc-${c.ton}` : 's-t3' })
+        }
+        drawPlaced(c.variables, order.get(`${ci}|${c.nom}`), fy + (c.nom ? HDR : 6), `F${ci}`)
+        bottom = fy - CG
+      })
+      // Les flèches : vers le tas (une case visée : at), ou vers une autre variable de la pile par le couloir du milieu
       let lane = 0
-      for (const v of e.variables) {
-        const i = vOrder.indexOf(v.nom), ry = top + i * (RH + RG), cx = 16 + nameW + 10
-        const tc = v.ton && v.ton !== 'dim' ? `s-tc-${v.ton}` : v.ton === 'dim' ? 's-t3' : 's-t1'
-        b += text(16 + nameW, ry + RH / 2, v.nom, { anchor: 'end', mono: true, size: MONO, cls: tc })
-        b += item(cx, ry, cellW, RH, v.ton && v.ton !== 'dim' ? v.ton : '', 3)
-        if (v.vers === undefined) b += text(cx + cellW / 2, ry + RH / 2, v.valeur, { mono: true, size: MONO, cls: 's-t1' })
-        else if (v.vers === null) b += text(cx + cellW / 2, ry + RH / 2, 'null', { mono: true, size: MONO, cls: 's-t3' })
-        else {
-          const dx = cx + cellW / 2, dy = ry + RH / 2, t = at[v.vers], ex = t.x, ey = t.y + OH / 2
-          b += `<circle cx="${r(dx)}" cy="${r(dy)}" r="3.5" class="${v.ton && v.ton !== 'dim' ? `s-f-${v.ton}` : 's-f-acc'}"/>`
-          const k = Math.max(40, (ex - dx) * 0.45)
-          b += line(`M${r(dx + 4)},${r(dy)} C${r(dx + k)},${r(dy)} ${r(ex - k)},${r(ey)} ${r(ex - 1)},${r(ey)}`, ctx, { ton: v.ton && v.ton !== 'dim' ? v.ton : 'acc' })
+      for (const a of arrows) {
+        const v = a.v, t = v.ton && v.ton !== 'dim' ? v.ton : 'acc'
+        // dans une case pleine (accent), le point de départ est clair
+        b += `<circle cx="${r(a.x)}" cy="${r(a.y)}" r="3.5" class="${v.ton === 'acc' ? 's-tc-acc' : `s-f-${t}`}"/>`
+        if (v.vers) {
+          const o = at[v.vers]
+          if (!o) continue
+          const ex = o.x, ey = fieldY(v.vers, v.at), k = Math.max(40, (ex - a.x) * 0.45)
+          b += line(`M${r(a.x + 4)},${r(a.y)} C${r(a.x + k)},${r(a.y)} ${r(ex - k)},${r(ey)} ${r(ex - 1)},${r(ey)}`, ctx, { ton: t })
+        } else if (v.versVar) {
+          const [ci, nom, k] = v.versVar, pre = ci === -1 ? 'G' : `F${ci}`
+          const target = (k && (cells[`${pre}|${nom}.${k}`] ?? cells[`${pre}|${nom}.[${k}]`])) || cells[`${pre}|${nom}`]
+          if (!target) continue
+          const lx = pileW + 10 + 8 * (lane++ % 5)
+          b += line(path([[a.x + 4, a.y], [lx, a.y], [lx, target.y], [cx + cellW + 1, target.y]], 6), ctx, { ton: t })
         }
       }
       // Un champ qui pointe vers un autre objet : par la droite du tas
       for (const o of e.objets) o.champs.forEach((c, j) => {
-        if (!c.vers) return
-        const s0 = at[o.id], t = at[c.vers], fy = s0.y + OH + 4 + j * FRH + FRH / 2, xr = tx + 20 + objW
-        const lx = xr + 14 + 9 * (lane++ % 3), ty = t.y + OH / 2
+        if (!c.vers || !at[c.vers]) return
+        const s0 = at[o.id], fy = s0.y + OH + 4 + j * FRH + FRH / 2, xr = tx + 20 + objW
+        const lx = xr + 14 + 9 * (lane++ % 3), ty = fieldY(c.vers, c.at)
         b += line(path([[xr - 12, fy], [lx, fy], [lx, ty], [xr + 1, ty]], 6), ctx, { ton: 'acc' })
       })
       return { w: tx + tasW, h: H, body: b }

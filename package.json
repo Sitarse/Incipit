@@ -1,6 +1,6 @@
 {
   "name": "incipit",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Incipit : tes photos de cours, PDF de diapos et notes deviennent un cours rédigé (Markdown pour Obsidian, et PDF), avec fiche, TP noté, flash cards et lecteur",
   "main": "src/main.js",
   "scripts": {
@@ -84,7 +84,16 @@
       "category": "Education",
       "synopsis": "Tes photos de cours deviennent un cours rédigé",
       "maintainer": "Incipit <incipit@users.noreply.github.com>"
-    }
+    },
+    "fileAssociations": [
+      {
+        "ext": "incipit",
+        "name": "Cours Incipit",
+        "description": "Un cours Incipit (lisible par Incipit et par Hitodama)",
+        "role": "Editor",
+        "mimeType": "application/x-incipit"
+      }
+    ]
   },
   "author": {
     "name": "Incipit",

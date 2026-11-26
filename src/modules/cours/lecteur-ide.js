@@ -12,6 +12,7 @@ const ICO = {
   reset: '<svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>',
   copy: '<svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>',
   close: '<svg viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+  voice: '<svg viewBox="0 0 24 24"><path d="M3 14v-2a9 9 0 0 1 18 0v2"/><rect x="2" y="14" width="5" height="6" rx="2"/><rect x="17" y="14" width="5" height="6" rx="2"/></svg>',
 }
 const ideLangOf = tag => IDE.alias.get(String(tag ?? '').toLowerCase()) ?? null
 const langInfo = id => IDE.langs?.find(l => l.id === id)
@@ -120,15 +121,16 @@ function paintBar(b) {
   const sel = b.root.querySelector('.ib-lang'), l = langInfo(b.lang), miss = b.root.querySelector('.ib-miss')
   sel.innerHTML = IDE.langs.map(x => `<option value="${x.id}" ${x.id === b.lang ? 'selected' : ''}>${esc(x.nom)}${x.ok ? '' : ' (à installer)'}</option>`).join('')
   b.root.querySelector('.ib-v').textContent = l?.ok ? l.version : ''
-  const step = b.root.querySelector('[data-b=trace]')
-  step.disabled = !l?.pile || !l.ok
-  step.title = l?.pile ? 'La pile d’appels et les variables, ligne par ligne (F10)' : 'Le pas à pas existe pour C, C++ et Python'
+  const step = b.root.querySelector('[data-b=trace]'), noDbg = l?.ok && l.pile && l.debugger === false
+  step.disabled = !l?.pile || !l.ok || noDbg
+  step.title = !l?.pile ? 'Le pas à pas existe pour C, C++, Python, Java, JavaScript et C#' : noDbg ? 'Installe d’abord le débogueur C# (bandeau au-dessus)' : 'La mémoire du programme dessinée, ligne par ligne (F10)'
   b.root.querySelector('[data-b=run]').disabled = !l?.ok
-  // un compilateur ancien : dit une fois, sur le premier exemple de ce langage dans la page (pas sur chacun)
+  // un compilateur ancien, le débogueur C# absent : dit une fois, sur le premier exemple de ce langage dans la page
   const first = [...IDE.boxes].find(o => o.lang === b.lang && o.root.isConnected && !o.panel) === b || b.panel
-  miss.hidden = !(l && (!l.ok || (l.vieux && first)))
+  miss.hidden = !(l && (!l.ok || ((l.vieux || noDbg) && first)))
   if (!miss.hidden) miss.innerHTML = !l.ok
     ? `<span><b>${esc(l.nom)} n’est pas installé sur ce PC.</b> ${l.winget ? `Incipit peut l’installer avec winget (${esc(l.winget)}).` : l.hint ? `Dans un terminal : <code>${esc(l.hint)}</code>` : ''}</span>${l.winget ? `<button class="ib-btn pri" data-inst="${l.id}">Installer ${esc(l.nom)}</button>` : ''}<button class="ib-btn" data-rescan>Je l’ai installé</button>`
+    : noDbg ? '<span><b>Le pas à pas C# demande un débogueur.</b> Incipit peut télécharger netcoredbg (Samsung, libre, 3,5 Mo, depuis GitHub, empreinte vérifiée).</span><button class="ib-btn pri" data-dbg>Installer le débogueur C#</button>'
     : `<span><b>Ton compilateur est ancien</b> (${esc(l.version)}) : le C++ récent (C++17, C++20) peut ne pas compiler.${l.hint ? ` Mets-le à jour : <code>${esc(l.hint)}</code>` : ''}</span>${l.winget ? `<button class="ib-btn" data-inst="${l.id}">Installer le GCC récent</button>` : ''}`
 }
 const setRunning = (b, on) => { b.running = on; b.root.querySelector('[data-b=stop]').hidden = !on; b.root.querySelector('[data-b=run]').hidden = on }
@@ -146,14 +148,28 @@ function take(b) { for (const o of IDE.boxes) if (o !== b && o.running) setRunni
 const markers = (b, diag) => b.ed && IDE.mon.editor.setModelMarkers(b.ed.getModel(), 'ide', (diag ?? []).map(d => ({ startLineNumber: d.line, startColumn: d.col, endLineNumber: d.line,
   endColumn: 1000, message: d.message, severity: d.severity === 'warning' ? IDE.mon.MarkerSeverity.Warning : IDE.mon.MarkerSeverity.Error })))
 const codeOf = b => b.ed ? b.ed.getValue() : b.orig
+const linesOf = el => $$('.l', el).map(l => l.textContent).join('\n').replace(/ /g, ' ')
+// Un exemple C/C++ en plusieurs fichiers (#include "Purse.h") : les blocs du chapitre annoncés par leur nom de fichier
+// (« Fichier `Purse.h` » juste avant) partent avec lui, sauf ceux qui ont leur propre main
+function filesFor(b) {
+  if (!/^(?:c|cpp)$/.test(b.lang) || !/#\s*include\s*"/.test(codeOf(b))) return undefined
+  const files = {}
+  for (const el of $$('[data-file]', chapEl)) {
+    const code = el._box ? codeOf(el._box) : linesOf(el)
+    if (el !== b.root && !/\bmain\s*\(/.test(code)) files[el.dataset.file] = code
+  }
+  return files
+}
 async function run(b) {
   if (!langInfo(b.lang)?.ok || !IDE.mon) return
   clearTrace(b); markers(b, []); showLow(b, 'console')
   b.term.reset(); b.line = ''
   take(b); setRunning(b, true)
-  const r = await L.ide({ op: 'run', lang: b.lang, code: codeOf(b) })
+  const files = filesFor(b)
+  const r = await L.ide({ op: 'run', lang: b.lang, code: codeOf(b), files })
   if (!r || r.error || r.missing) { setRunning(b, false); b.term.write(`\x1b[31m${r?.missing ? 'Ce langage n’est pas installé.' : r?.error ?? 'Ça n’a pas marché.'}\x1b[0m\r\n`); return }
-  if (r.wrapped) b.term.write('\x1b[2m(l’exemple est complété automatiquement : un main autour, les #include)\x1b[0m\r\n')
+  if (files && Object.keys(files).length) b.term.write(`\x1b[2m(avec les fichiers du chapitre : ${Object.keys(files).join(', ')})\x1b[0m\r\n`)
+  if (r.wrapped) b.term.write('\x1b[2m(l’exemple est complété automatiquement pour pouvoir tourner : ce qui manque autour, les include ou import)\x1b[0m\r\n')
   b.term.focus()
 }
 const C = { err: '\x1b[38;2;244;114;122m', sys: '\x1b[38;2;140;138;158m', ok: '\x1b[38;2;76;195;138m', off: '\x1b[0m' }
@@ -190,8 +206,8 @@ function typed(b, d) {
 
 // ---------- Pas à pas : la pile, ligne par ligne ----------
 function clearTrace(b) {
-  b.steps = []; b.at = 0; b.deco?.clear()
-  b.root.querySelector('.ib-pile-body').innerHTML = '<p class="ib-hint">« Pas à pas » exécute le programme ligne par ligne : tu vois les fonctions appelées (la pile) et la valeur de chaque variable. Si le programme lit une saisie, écris-la au-dessus avant.</p>'
+  b.steps = []; b.at = 0; b.spec = null; pileLine(b, null)
+  b.root.querySelector('.ib-pile-body').innerHTML = '<p class="ib-hint">« Pas à pas » exécute le programme ligne par ligne et dessine sa mémoire : les appels empilés, leurs variables, les objets et les flèches des pointeurs. Si le programme lit une saisie, écris-la au-dessus avant.</p>'
   b.root.querySelector('.ib-nav').hidden = true
 }
 async function trace(b) {
@@ -200,8 +216,10 @@ async function trace(b) {
   markers(b, []); showLow(b, 'pile'); clearTrace(b)
   b.root.querySelector('.ib-pile-body').innerHTML = '<p class="ib-hint"><span class="spin"></span> Compilation et pas à pas…</p>'
   take(b); setRunning(b, true)
-  const r = await L.ide({ op: 'trace', lang: b.lang, code: codeOf(b), stdin: b.root.querySelector('.ib-in textarea').value })
+  const files = filesFor(b)
+  const r = await L.ide({ op: 'trace', lang: b.lang, code: codeOf(b), files, stdin: b.root.querySelector('.ib-in textarea').value })
   setRunning(b, false)
+  b.sent = files ?? {}
   markers(b, r?.diag)
   if (!r || r.missing || (!r.steps?.length && r.error)) {
     b.root.querySelector('.ib-pile-body').innerHTML = `<div class="ib-err"><b>${esc(r?.missing ? 'Ce langage n’est pas installé.' : r?.error ?? 'Le pas à pas a échoué.')}</b>${r?.build ? `<pre>${esc(r.build.slice(-3000))}</pre>` : ''}</div>`
@@ -216,38 +234,23 @@ function showStep(b, k) {
   const n = b.steps.length
   if (!n) return
   b.at = Math.max(0, Math.min(n - 1, k))
-  const s = b.steps[b.at], prev = b.steps[b.at - 1], end = s.event === 'end'
+  const s = b.steps[b.at], end = s.event === 'end'
   b.root.querySelector('.ib-nav input').value = String(b.at)
-  b.root.querySelector('.ib-pos').textContent = end ? `Fin · ${n - 1} pas` : `Pas ${b.at + 1} / ${n - 1} · ligne ${s.line}`
+  b.root.querySelector('.ib-pos').textContent = end ? `Fin · ${n - 1} pas` : `Pas ${b.at + 1} / ${n - 1} · ligne ${s.line}${s.file && b.sent && s.file in b.sent ? ` de ${s.file}` : ''}`
   b.root.querySelector('[data-b=prev]').disabled = b.at === 0; b.root.querySelector('[data-b=next]').disabled = b.at === n - 1
-  // la ligne en cours, dans l'éditeur
-  b.deco?.clear()
-  if (!end && b.ed) {
-    b.deco = b.ed.createDecorationsCollection([{ range: new IDE.mon.Range(s.line, 1, s.line, 1), options: { isWholeLine: true, className: 'ide-cur', glyphMarginClassName: 'ide-cur-g' } }])
-    b.ed.revealLineInCenterIfOutsideViewport(s.line)
-  }
-  // la pile : l'appel en cours en haut ; les variables qui viennent de changer, marquées
-  const before = new Map((prev?.stack ?? []).map((f, i, a) => [`${a.length - i}:${f.func}`, f.vars]))
-  const frames = s.stack.map((f, i) => {
-    const old = before.get(`${s.stack.length - i}:${f.func}`) ?? {}
-    const vars = Object.entries(f.vars ?? {})
-    return `<div class="ide-fr${i ? '' : ' ide-fr-top'}"><div class="ide-fr-h"><b>${esc(f.func)}()</b><span>ligne ${f.line}</span></div>${vars.length
-      ? `<table>${vars.map(([k, v]) => `<tr class="${old[k] !== undefined && old[k] !== v ? 'chg' : old[k] === undefined && prev ? 'new' : ''}"><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join('')}</table>`
-      : '<p class="ide-none">pas de variable</p>'}</div>`
-  }).join('')
-  const note = s.exc ? `<div class="ide-exc">Exception levée : <b>${esc(s.exc)}</b></div>` : s.ret !== undefined && s.event === 'return' ? `<div class="ide-ret">${esc(s.stack[0]?.func ?? '')}() renvoie <b>${esc(s.ret)}</b></div>` : ''
-  b.root.querySelector('.ib-pile-body').innerHTML = `${end ? `<div class="${b.error ? 'ide-exc' : 'ide-ret'}">${esc(b.error ?? 'Le programme est terminé.')}</div>` : ''}${note}
-    <div class="ide-cols"><div><div class="lab">Pile d’appels</div>${frames || '<p class="ide-none">vide</p>'}</div>
-    <div><div class="lab">Console à ce pas</div><pre class="ide-out">${esc(s.out ?? '') || '<span class="ide-none">rien d’affiché</span>'}</pre></div></div>`
+  // la ligne en cours, puis la mémoire dessinée (lecteur-pile.js)
+  pileLine(b, s)
+  pileShow(b, b.at)
 }
 
 // ---------- Les clics, pour tous les IDE ----------
 document.addEventListener('click', async e => {
   const root = e.target.closest('.ide-box'), b = root?._box
   if (!b) return
-  const t = e.target.closest('[data-b],[data-tab],[data-inst],[data-rescan]')
+  const t = e.target.closest('[data-b],[data-tab],[data-inst],[data-rescan],[data-dbg]')
   if (!t) return
   if (t.dataset.tab) return showLow(b, t.dataset.tab)
+  if (t.dataset.dbg !== undefined) { showLow(b, 'console'); b.term?.reset(); take(b); t.disabled = true; await L.ide({ op: 'installdbg' }); return }
   if (t.dataset.rescan !== undefined) { stateOf(b, 'Recherche…'); await ideLangs(true); stateOf(b, ''); return }
   if (t.dataset.inst) { showLow(b, 'console'); b.term?.reset(); take(b); t.disabled = true; const r = await L.ide({ op: 'install', lang: t.dataset.inst }); if (r?.error) b.term?.write(`\x1b[31m${r.error}\x1b[0m\r\n`); return }
   const act = t.dataset.b
@@ -277,6 +280,9 @@ function ideUpgrade(scope) {
   for (const wrap of $$('.code[data-lang]', scope === document ? $('#body') ?? document : scope)) {
     const id = ideLangOf(wrap.dataset.lang)
     if (!id || wrap._box || wrap.closest('.pn-codewin')) continue
+    // le nom de fichier annoncé juste avant le bloc (« Fichier `Purse.h` ») : pour les exemples en plusieurs fichiers
+    const label = (wrap.previousElementSibling?.textContent ?? '').slice(0, 200).match(/\b([\w-]+\.(?:h|hh|hpp|hxx|c|cc|cpp|cxx))\b/i)?.[1]
+    if (label && /^(?:c|cpp)$/.test(id)) wrap.dataset.file = label
     const code = $$('.l', wrap).map(l => l.textContent).join('\n').replace(/ /g, ' ')
     // un extrait (une signature, un squelette avec « ... ») ne se lance pas seul : il reste un bloc de code, sans IDE
     if (!window.IdeLangs.runnable(id, code)) {

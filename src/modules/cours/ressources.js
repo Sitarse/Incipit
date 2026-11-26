@@ -5,7 +5,7 @@
 //    (sa description), sans quota ;
 // 3. Claude (Haiku, sans outil, presque rien) choisit dans ces chapitres le moment qui traite le chapitre du cours.
 // Le résultat est gardé dans DATA/ressources (un fichier par chapitre) : un chapitre ne se cherche qu'une fois.
-// ctx : data, claude (le chemin du CLI ou null)
+// ctx : data, claude (le chemin du CLI ou null, ou une fonction qui le cherche à chaque appel)
 const { spawn } = require('node:child_process')
 const { net } = require('electron')
 const crypto = require('node:crypto')
@@ -63,12 +63,13 @@ module.exports = ctx => {
   // Le CLI claude, une question, une réponse JSON (--json-schema) ; le texte part par l'entrée standard
   function ask(model, tools, schema, prompt) {
     return new Promise((resolve, reject) => {
-      if (!ctx.claude) return reject(new Error('Claude Code est introuvable sur ce PC.'))
+      const bin = typeof ctx.claude === 'function' ? ctx.claude() : ctx.claude
+      if (!bin) return reject(new Error('Claude Code est introuvable sur ce PC.'))
       const env = { ...process.env }
       for (const k of ['ANTHROPIC_BASE_URL', 'CLAUDECODE', 'ELECTRON_RUN_AS_NODE']) delete env[k]
       const args = ['-p', '--model', model, '--setting-sources', '', '--output-format', 'json', '--json-schema', JSON.stringify(schema), '--tools', tools.join(',')]
       if (tools.length) args.push('--allowed-tools', tools.join(','))
-      const p = spawn(ctx.claude, args, { env, windowsHide: true })
+      const p = spawn(bin, args, { env, windowsHide: true })
       let out = '', err = ''
       const timer = setTimeout(() => { p.kill(); reject(new Error('La recherche a pris trop de temps.')) }, TIMEOUT)
       p.stdout.on('data', d => { out += d }); p.stderr.on('data', d => { err += d })

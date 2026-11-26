@@ -6,6 +6,18 @@ révision, TP noté, flash cards à réviser, série du jour et un lecteur de co
 C'est le module Cours de Hitodama, sorti en appli à part : mêmes fonctions, même moteur, aucune dépendance à Hitodama.
 Windows, macOS et Linux.
 
+## Un cours, un fichier `.incipit`
+
+Un cours se partage en un seul fichier `.incipit` (une archive zip : la note, son PDF, la fiche, le sujet, les flash cards,
+le TP et les photos). **Incipit et Hitodama lisent et écrivent exactement le même format** : un cours fait dans l'un
+s'importe dans l'autre, sans rien perdre.
+
+- **Exporter** : dans le lecteur, panneau du cours → « Exporter (.incipit) ».
+- **Importer** : un double-clic sur le fichier, le glisser sur la fenêtre, ou le bouton ⤒ de « Mes cours ». Une fenêtre montre
+  ce que contient le fichier et demande confirmation (et si un cours du même nom existe, s'il faut le remplacer).
+- Un TP contient du code qui s'exécute sur ton PC : n'importe que des cours de gens en qui tu as confiance.
+- Le format est décrit en tête de `src/modules/cours/partage.js` (zip + `incipit.json` : format, matière, type, titre).
+
 ## Installer
 
 Les installateurs se construisent sur GitHub à chaque envoi (onglet Actions) et se publient avec un tag `v…` (onglet
@@ -65,7 +77,9 @@ Les cours vont dans `Documents/Cours`, ou le dossier choisi dans les réglages. 
 
 - **IDE des cours** (le lecteur) : les compilateurs sont cherchés dans le PATH, plus Homebrew, cargo, nvm… Pour installer un
   langage manquant, l'IDE affiche la commande à taper (Windows : winget, par un bouton). Le pas à pas de C/C++ demande gdb
-  (Linux : `sudo apt install gdb`) ; sous macOS il n'est pas disponible (clang n'a pas gdb), le reste marche.
+  (Linux : `sudo apt install gdb`) ; sous macOS il n'est pas disponible (clang n'a pas gdb), le reste marche. Le pas à pas
+  existe aussi pour Python, Java et JavaScript (partout) et pour C# (Windows seulement : le débogueur netcoredbg est téléchargé
+  après un clic). Les exemples C/C++ en plusieurs fichiers (`.h`, `.cpp`) sont compilés ensemble.
 - **Obsidian** : ses coffres sont lus dans son dossier de réglages, selon le système.
 - **Code** : tout ce qui change est dans `src/app/platform.js` (testé pour les trois systèmes : `tests/platform.test.js`).
 
@@ -73,7 +87,9 @@ Les cours vont dans `Documents/Cours`, ou le dossier choisi dans les réglages. 
 
 - `src/app/platform.js` : ce qui change entre Windows, macOS et Linux (uv, Claude Code, PATH, arrêt des processus).
 - `src/main.js` : la fenêtre, et ce que le module attend de son hôte.
-- `src/modules/cours/` : le module tel qu'il est dans Hitodama (partie Node, panneau, lecteur, moteur Python).
+- `src/modules/cours/` : le module tel qu'il est dans Hitodama (partie Node, panneau, lecteur, moteur Python), sans ce qui
+  demande Hito lui-même (sa voix, le mode prof dans VS Code, ses cartes) ; `partage.js` et `src/app/zip.js` sont les mêmes
+  dans les deux applis (le fichier `.incipit`).
 - `src/renderer/` : la page, et `shim.js`, les petits outils que Hitodama fournissait au module.
 - `src/ai/companion.js` : le tuteur du lecteur (Claude Code, sinon Gemini). `src/ai/ai.js` : Gemini, plusieurs clés.
 - `launcher/` : le lanceur Windows `Incipit.exe` ; le logo est dans `assets/` (celui de l'ancienne appli).

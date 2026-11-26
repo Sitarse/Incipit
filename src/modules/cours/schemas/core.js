@@ -211,20 +211,21 @@
 
   // Un type : { name, alias, check(spec, err), steps?(spec), captions?(spec), render(spec, ctx) -> { w, h, body } }
   function type(def) { S.types[def.name] = def; for (const a of def.alias ?? []) S.alias[a] = def.name; return def }
-  function validate(spec) {
+  // opts.libre : sans les limites de taille faites pour les schémas écrits par l'IA (l'IDE dessine un vrai programme)
+  function validate(spec, opts = {}) {
     if (!spec || typeof spec !== 'object' || Array.isArray(spec)) return { ok: false, errors: ['un schéma est un objet JSON { "type": … }'] }
     const k = norm(spec.type), T = S.types[S.alias[k] ?? k]
     if (!T) return { ok: false, errors: [`type inconnu « ${str(spec.type, 30)} » (connus : ${Object.keys(S.types).join(', ')})`] }
     const out = JSON.parse(JSON.stringify(spec)), errors = []
     out.type = T.name; out._as = k // le nom écrit par l'IA (« cascade », « heritage »…) : certains types s'en servent
     out.titre = str(out.titre, 120)
-    try { T.check(out, m => errors.push(m)) } catch (e) { errors.push(e.message) }
+    try { T.check(out, m => errors.push(m), { libre: !!opts.libre }) } catch (e) { errors.push(e.message) }
     return errors.length ? { ok: false, errors } : { ok: true, spec: out }
   }
   // spec -> { svg, width, height, steps, captions }. opts : step (0…n-1, sinon l'image fixe), theme 'paper' (image
-  // fixe, ses couleurs dedans) ou 'css' (le lecteur donne les couleurs), uid (identifiants des pointes de flèche)
+  // fixe, ses couleurs dedans) ou 'css' (le lecteur donne les couleurs), uid (identifiants des pointes de flèche), libre
   function render(spec, opts = {}) {
-    const v = validate(spec)
+    const v = validate(spec, opts)
     if (!v.ok) throw new Error(v.errors.join(' ; '))
     const T = S.types[v.spec.type], n = Math.max(1, T.steps?.(v.spec) ?? 1)
     const step = opts.step == null ? null : Math.max(0, Math.min(n - 1, Math.round(opts.step)))

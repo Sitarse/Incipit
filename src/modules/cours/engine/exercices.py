@@ -30,7 +30,9 @@ import shlex
 import subprocess
 import sys
 import tempfile
+import threading
 import unicodedata
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from generator import CHARTE, DEFAUT, MOTEURS, PERSONA, cle_du_moteur, etape, \
@@ -223,23 +225,45 @@ def notions_du_cours(md: str) -> list[str]:
 
 # ------------------------------------------------------------------ consignes
 
+NOMS_LANGUES = {
+    "fr": "français", "en": "anglais", "es": "espagnol", "de": "allemand",
+    "it": "italien", "pt": "portugais", "nl": "néerlandais", "pl": "polonais",
+    "ru": "russe", "zh": "chinois", "ja": "japonais", "ko": "coréen",
+    "ar": "arabe", "hi": "hindi", "tr": "turc", "sv": "suédois",
+    "da": "danois", "no": "norvégien", "fi": "finnois", "cs": "tchèque",
+    "hu": "hongrois", "ro": "roumain", "uk": "ukrainien", "el": "grec",
+    "he": "hébreu", "th": "thaï", "vi": "vietnamien", "id": "indonésien",
+}
+
+
+# Le TP, la fiche et les flash cards d'un meme cours partent avec la meme consigne systeme, qui contient le cours :
+# le CLI claude la met en cache au premier appel, les deux autres la relisent au dixieme du prix au lieu de la
+# reecrire (mesure : ~45 000 jetons ecrits par support). Chaque demande ne porte plus que sa tache.
+def systeme_supports(meta: dict, md: str, langue: str = "fr") -> str:
+    """Persona + charte des cours, reprises telles quelles (les supports parlent la meme langue pedagogique que le
+    cours), puis le cours lui-meme."""
+    return (
+        f"Tu prepares les supports de revision du cours ci-dessous (TP note, fiche de revision, flash cards) pour "
+        f"l'etudiant a qui il a ete ecrit, en {NOMS_LANGUES.get(langue, 'français')}. Chaque demande dit lequel et "
+        "sa forme exacte.\n\n" + PERSONA + "\n\n" + CHARTE + "\n\n"
+        "===== LE COURS (les supports s'y tiennent, sans deborder sur des notions absentes) =====\n"
+        f"Matiere : {meta['matiere']}\nCours   : {meta['titre']}\n\n{md}"
+    )
+
+
 def consigne_exercices(langue: str = "fr", avec_code: bool = True) -> str:
     """Persona + charte des cours, reprises telles quelles : les exercices
     doivent parler la meme langue pedagogique que le cours qu'ils exercent."""
-    noms_langues = {
-        "fr": "français", "en": "anglais", "es": "espagnol", "de": "allemand",
-        "it": "italien", "pt": "portugais", "nl": "néerlandais", "pl": "polonais",
-        "ru": "russe", "zh": "chinois", "ja": "japonais", "ko": "coréen",
-        "ar": "arabe", "hi": "hindi", "tr": "turc", "sv": "suédois",
-        "da": "danois", "no": "norvégien", "fi": "finnois", "cs": "tchèque",
-        "hu": "hongrois", "ro": "roumain", "uk": "ukrainien", "el": "grec",
-        "he": "hébreu", "th": "thaï", "vi": "vietnamien", "id": "indonésien",
-    }
-    nom_langue = noms_langues.get(langue, "français")
     return (
         f"Tu prepares des exercices d'application pour l'etudiant a qui tu "
-        f"viens d'ecrire ce cours, en {nom_langue}.\n\n"
-        + PERSONA + "\n\n" + CHARTE + "\n\n"
+        f"viens d'ecrire ce cours, en {NOMS_LANGUES.get(langue, 'français')}.\n\n"
+        + PERSONA + "\n\n" + CHARTE + "\n\n" + tache_exercices(avec_code)
+    )
+
+
+def tache_exercices(avec_code: bool = True) -> str:
+    """Ce que la consigne du TP ajoute a la persona et a la charte : le TP lui-meme."""
+    return (
         "Objectif ici : un TP personnel note sur 100, pas un cours.\n"
         "- Un exercice = une seule notion, clairement rattachee.\n"
         "- Un VRAI sujet de TP, pas une question de cours recitee : une "
@@ -307,9 +331,10 @@ def consigne_exercices(langue: str = "fr", avec_code: bool = True) -> str:
     )
 
 
-def demande_exercices(meta: dict, niveau: str, notions: list[str], md: str,
+def demande_exercices(meta: dict, niveau: str, notions: list[str], md: str | None,
                       focus: str = "", questions: int = QUESTIONS_DEFAUT,
                       avec_code: bool = True) -> str:
+    """md None : le cours est deja dans la consigne systeme (systeme_supports)."""
     liste = "\n".join(f"- {n}" for n in notions)
     parts = repartition_paliers(questions)
     plan = "\n".join(f"- Palier {PALIERS.index(p) + 1} - {p} : {n} exercice(s)"
@@ -329,10 +354,9 @@ def demande_exercices(meta: dict, niveau: str, notions: list[str], md: str,
         f"Matiere : {meta['matiere']}\n"
         f"Cours   : {meta['titre']}\n"
         f"Niveau demande pour les exercices : {niveau}\n\n"
-        "Le cours complet (les exercices s'y tiennent, sans deborder sur des "
-        "notions absentes) :\n\n"
-        f"{md}\n\n"
-        "Notions du cours a exercer :\n" + liste + "\n\n"
+        + ("Le cours complet (les exercices s'y tiennent, sans deborder sur des "
+           "notions absentes) :\n\n" f"{md}\n\n" if md is not None else "")
+        + "Notions du cours a exercer :\n" + liste + "\n\n"
         + cadrage +
         f"Redige EXACTEMENT {questions} exercice(s) au total, dans cet ordre "
         "et selon cette repartition :\n" + plan + "\n"
@@ -375,21 +399,16 @@ def demande_exercices(meta: dict, niveau: str, notions: list[str], md: str,
 
 
 def consigne_fiche(langue: str = "fr") -> str:
-    noms_langues = {
-        "fr": "français", "en": "anglais", "es": "espagnol", "de": "allemand",
-        "it": "italien", "pt": "portugais", "nl": "néerlandais", "pl": "polonais",
-        "ru": "russe", "zh": "chinois", "ja": "japonais", "ko": "coréen",
-        "ar": "arabe", "hi": "hindi", "tr": "turc", "sv": "suédois",
-        "da": "danois", "no": "norvégien", "fi": "finnois", "cs": "tchèque",
-        "hu": "hongrois", "ro": "roumain", "uk": "ukrainien", "el": "grec",
-        "he": "hébreu", "th": "thaï", "vi": "vietnamien", "id": "indonésien",
-    }
-    nom_langue = noms_langues.get(langue, "français")
     return (
-        f"Tu condenses le cours en une fiche de revision, en {nom_langue}, en "
+        f"Tu condenses le cours en une fiche de revision, en {NOMS_LANGUES.get(langue, 'français')}, en "
         "Markdown Obsidian -- meme convention que le cours : encadres "
         "`> [!...]`, tableaux, ==surlignage==.\n\n"
-        + PERSONA + "\n\n" + CHARTE + "\n\n"
+        + PERSONA + "\n\n" + CHARTE + "\n\n" + tache_fiche()
+    )
+
+
+def tache_fiche() -> str:
+    return (
         "Objectif : une ou deux pages, relues en cinq minutes juste avant un "
         "controle. Pas de texte suivi : une notion = une ligne de tableau ou "
         "une puce. Garde le tableau Vocabulaire du cours s'il existe. Termine "
@@ -415,11 +434,15 @@ CHAMPS_CARTE = ("Notion", "Recto", "Verso")
 
 
 def consigne_cartes(langue: str = "fr") -> str:
-    noms_langues = {"fr": "français", "en": "anglais"}
     return (
         f"Tu fabriques des cartes de revision (flash cards) a partir du cours, en "
-        f"{noms_langues.get(langue, 'français')}.\n\n"
-        + PERSONA + "\n\n" + CHARTE + "\n\n"
+        f"{NOMS_LANGUES.get(langue, 'français')}.\n\n"
+        + PERSONA + "\n\n" + CHARTE + "\n\n" + tache_cartes()
+    )
+
+
+def tache_cartes() -> str:
+    return (
         "Objectif : des cartes relues des dizaines de fois sur un semestre, a "
         "intervalles de plus en plus longs. Une carte qui demande de reflechir "
         "une seconde se retient ; une carte vague ou a rallonge ne se retient pas.\n"
@@ -1217,20 +1240,28 @@ def fabriquer(source: Path, niveau: str, cle_env: Path, moteur: str,
     cle = cle_du_moteur(moteur, cle_env)
     modele = modele_retenu(moteur, modele, cle_env)
     print(f". {MOTEURS[moteur].libelle}, {len(notions)} notion(s) reperee(s)")
-    faits = []
+    # La consigne commune (avec le cours), mise en cache par le premier appel : cf. systeme_supports
+    systeme = systeme_supports(meta, md, langue)
+    pret = threading.Event()        # le premier appel a commence a repondre : sa consigne est en cache
 
-    if faire_tp:
+    def demander(tache: str, max_jetons: int) -> str:
+        try:
+            return repondre(moteur, modele, cle, systeme, tache, cle_env=cle_env, max_jetons=max_jetons,
+                            cache=True, au_fil=lambda _cumul: pret.set())
+        finally:
+            pret.set()
+
+    def le_tp() -> list[Path]:
+        faits = []
         # Ce que le cours contient decide de ce que le TP peut demander : sans
         # Python dedans, pas de fonction a completer (cf. cours_avec_code).
         avec_code = cours_avec_code(md)
         print(". Generation des exercices (TP)"
               + ("..." if avec_code else " -- sans code, le cours n'en a pas..."), flush=True)
         with etape("Exercices du TP"):
-            brut = repondre(moteur, modele, cle,
-                            consigne_exercices(langue, avec_code),
-                            demande_exercices(meta, niveau, notions, md, focus,
-                                              questions, avec_code),
-                            cle_env=cle_env, max_jetons=jetons_exos(questions))
+            brut = demander("Ta tache : le TP note de ce cours.\n\n" + tache_exercices(avec_code) + "\n\n"
+                            + demande_exercices(meta, niveau, notions, None, focus, questions, avec_code),
+                            jetons_exos(questions))
         exos = parser_exercices(nettoyer(brut), avec_code)
         dest_py = chemin_tp(source, "_exercices.py")
         dest_py.parent.mkdir(parents=True, exist_ok=True)
@@ -1268,25 +1299,25 @@ def fabriquer(source: Path, niveau: str, cle_env: Path, moteur: str,
             lanceur.chmod(0o755)     # sinon il n'est pas executable
         faits.append(lanceur)
         print(f". Lanceur ecrit : {lanceur.name}")
+        return faits
 
-    if faire_fiche:
+    def la_fiche() -> list[Path]:
         print(". Generation de la fiche de revision...", flush=True)
         with etape("Fiche de révision"):
-            fiche = nettoyer(repondre(moteur, modele, cle, consigne_fiche(langue),
-                                      demande_fiche_ou_cartes(meta, md),
-                                      cle_env=cle_env, max_jetons=MAX_JETONS_FICHE))
+            fiche = nettoyer(demander(
+                "Ta tache : condenser le cours en une fiche de revision, en Markdown Obsidian -- meme convention "
+                "que le cours : encadres `> [!...]`, tableaux, ==surlignage==.\n\n" + tache_fiche(), MAX_JETONS_FICHE))
         dest_fiche = source.with_name(source.stem + "_fiche.md")
         garder_version(dest_fiche)
         dest_fiche.write_text(fiche, encoding="utf-8")
         print(f". Fiche ecrite : {dest_fiche}", flush=True)
-        faits.append(dest_fiche)
+        return [dest_fiche]
 
-    if faire_cartes:
+    def les_cartes() -> list[Path]:
         print(". Generation des flash cards...", flush=True)
         with etape("Flash cards"):
-            brut = repondre(moteur, modele, cle, consigne_cartes(langue),
-                            demande_fiche_ou_cartes(meta, md),
-                            cle_env=cle_env, max_jetons=MAX_JETONS_CARTES)
+            brut = demander("Ta tache : des cartes de revision (flash cards) tirees du cours.\n\n" + tache_cartes(),
+                            MAX_JETONS_CARTES)
         cartes = parser_cartes(nettoyer(brut))
         if not cartes:
             raise SystemExit("Aucune carte lisible dans la reponse du modele.")
@@ -1297,11 +1328,27 @@ def fabriquer(source: Path, niveau: str, cle_env: Path, moteur: str,
         dest_md = source.with_name(source.stem + "_cartes.md")
         dest_md.write_text(cartes_en_markdown(meta, cartes), encoding="utf-8")
         print(f". {len(cartes)} cartes ecrites : {dest_md}", flush=True)
-        faits += [dest_json, dest_md]
+        return [dest_json, dest_md]
 
-    if not faits:
+    travaux = [f for f, voulu in ((le_tp, faire_tp), (la_fiche, faire_fiche), (les_cartes, faire_cartes)) if voulu]
+    if not travaux:
         raise SystemExit("Aucun support demande a generer.")
-    
+    # Le premier part seul ; les autres des que sa consigne est en cache (il commence a repondre), ensemble :
+    # ils la relisent au lieu de la reecrire, et les trois supports prennent le temps du plus long, pas leur somme.
+    # Un support rate n'empeche pas les autres d'etre ecrits ; son erreur remonte a la fin.
+    faits, erreurs = [], []
+    with ThreadPoolExecutor(max_workers=len(travaux)) as pool:
+        futurs = [pool.submit(travaux[0])]
+        if len(travaux) > 1:
+            pret.wait(timeout=180)
+            futurs += [pool.submit(f) for f in travaux[1:]]
+        for f in futurs:
+            try:
+                faits += f.result()
+            except BaseException as e:      # SystemExit compris (cartes illisibles)
+                erreurs.append(e)
+    if erreurs:
+        raise erreurs[0]
     return faits
 
 
@@ -1332,6 +1379,15 @@ def _self_test() -> None:
 
     consigne_en = consigne_exercices("en")
     assert "en anglais" in consigne_en
+
+    # Les trois supports partagent la consigne systeme (persona, charte, le cours) : le cache du premier sert aux
+    # autres. Les taches, elles, ne recopient pas le cours.
+    commun = systeme_supports({"matiere": "M", "titre": "T"}, md)
+    assert md in commun and "QUI TU ES" in commun and "CHARTE NON NEGOCIABLE" in commun
+    for tache in (tache_exercices(True), tache_exercices(False), tache_fiche(), tache_cartes()):
+        assert "Critere de Cauchy" not in tache and "QUI TU ES" not in tache
+    assert md not in demande_exercices({"matiere": "M", "titre": "T"}, "n", ["A"], None)
+    assert consigne_fiche("fr").endswith(tache_fiche()) and consigne_cartes("fr").endswith(tache_cartes())
 
     # Un TP court garde des marches ecartees, un TP long les remplit toutes :
     # dans les deux cas le total demande est exactement celui rendu.
